@@ -1,0 +1,15 @@
+version: '3'
+
+services:
+  postgres:
+    image: postgres:latest
+    environment:
+      POSTGRES_USER: issuebombom
+      POSTGRES_PASSWORD: issuebombom
+      POSTGRES_DB: localdatabase
+    ports:
+      - '5432:5432'
+
+networks:
+  nowlisten-server-network:
+    external: true
