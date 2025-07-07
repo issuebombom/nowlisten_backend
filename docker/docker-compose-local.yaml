@@ -6,7 +6,7 @@ services:
     environment:
       POSTGRES_USER: issuebombom
       POSTGRES_PASSWORD: issuebombom
-      POSTGRES_DB: localdatabase
+      POSTGRES_DB: nowlisten-server-local
     ports:
       - '5432:5432'
 
