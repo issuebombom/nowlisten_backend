@@ -3,6 +3,8 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { SnakeNamingStrategy } from 'typeorm-naming-strategies';
+import { AuthModule } from './auth/auth.module';
 
 @Module({
   imports: [
@@ -21,10 +23,12 @@ import { TypeOrmModule } from '@nestjs/typeorm';
         password: configService.get<string>('DB_PASSWORD'),
         database: configService.get<string>('DB_DATABASE'),
         autoLoadEntities: true,
+        namingStrategy: new SnakeNamingStrategy(),
         synchronize: true, // 개발 환경에서만 true로 설정
         logging: true, // 개발 환경에서만 true로 설정
       }),
     }),
+    AuthModule,
   ],
   controllers: [AppController],
   providers: [AppService],

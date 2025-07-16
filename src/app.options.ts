@@ -1,4 +1,4 @@
-import { NestApplicationOptions } from '@nestjs/common';
+import { NestApplicationOptions, ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
   WinstonModule,
@@ -8,6 +8,7 @@ import winston from 'winston';
 
 // type
 import { CorsOptions } from '@nestjs/common/interfaces/external/cors-options.interface';
+import { validationExceptionFilter } from './exception/validation-exception.filter';
 
 export function getNestOptions(): NestApplicationOptions {
   const configService = new ConfigService();
@@ -69,3 +70,15 @@ const checkLocalWhiteList = (env: string, requestOrigin: string) => {
       requestOrigin.includes('http://localhost'))
   );
 };
+
+// Global Validation Pipe
+export class GlobalValidationPipe {
+  static build(): ValidationPipe {
+    return new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+      exceptionFactory: validationExceptionFilter,
+    });
+  }
+}
