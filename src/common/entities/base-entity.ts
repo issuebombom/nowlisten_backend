@@ -12,10 +12,10 @@ export class BaseEntity {
   @PrimaryColumn({ type: 'varchar', length: 26 })
   id: string;
 
-  @CreateDateColumn({ type: 'timestamp' })
+  @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
 
-  @UpdateDateColumn({ type: 'timestamp' })
+  @UpdateDateColumn({ type: 'timestamptz' })
   updatedAt: Date;
 
   @BeforeInsert()

@@ -40,11 +40,13 @@ export function getNestOptions(): NestApplicationOptions {
 
 // CORS OPTIONS
 export const corsOptions = (env: string): CorsOptions => {
+  const whitelist = allowedOrigins[env] || [];
+
   return {
     origin: (requestOrigin, callback) => {
       if (
         !requestOrigin || // allow postman, same-origin etc.
-        originWhiteList.includes(requestOrigin) ||
+        whitelist.includes(requestOrigin) ||
         checkLocalWhiteList(env, requestOrigin)
       ) {
         callback(null, true);
@@ -52,16 +54,16 @@ export const corsOptions = (env: string): CorsOptions => {
         callback(new Error('Not allowed by CORS'));
       }
     },
+    credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
   };
 };
 
+// ! NOTE: env로 추가 제거 가능하도록 설정 필요
 const allowedOrigins = {
   test: [],
   prod: [],
 };
-
-const originWhiteList = [...allowedOrigins.test, ...allowedOrigins.prod];
 
 const checkLocalWhiteList = (env: string, requestOrigin: string) => {
   return (

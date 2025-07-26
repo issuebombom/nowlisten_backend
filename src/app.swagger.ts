@@ -10,6 +10,16 @@ export function setSwagger(app: INestApplication): void {
     .setTitle(`${serviceName} API Docs`)
     .setDescription(`${serviceName}의 API 문서입니다.`)
     .setVersion('1.0')
+    .addBearerAuth(
+      {
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT',
+        name: 'Authorization',
+        in: 'header',
+      },
+      'token',
+    )
     .build();
   const documentFactory = () => SwaggerModule.createDocument(app, config);
 
