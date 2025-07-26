@@ -20,3 +20,6 @@ network:
 start:
 	@echo start ${ENV}
 	@yarn start:${ENV}
+
+db:
+	@exec docker exec -it nowlisten-server-${ENV}-postgres-1 psql -U issuebombom -d nowlisten-server-local
