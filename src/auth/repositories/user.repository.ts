@@ -30,6 +30,14 @@ export class UserRepository {
     return this.repo.findOneBy({ email });
   }
 
+  findUserByEmailWithPassword(email: string): Promise<User> {
+    return this.repo
+      .createQueryBuilder('user')
+      .addSelect('user.password')
+      .where('email = :email', { email })
+      .getOne();
+  }
+
   findUsers(): Promise<User[]> {
     return this.repo.find({ take: 50 });
   }

@@ -29,8 +29,43 @@ export class UserService {
     return await this.userRepo.createUser(dto, hashedPassword);
   }
 
-  // !NOTE: 배포 단계에서는 사용 금지
+  async getUserByEmail(email: string): Promise<User> {
+    const user = await this.userRepo.findUserByEmail(email);
+    if (!user) {
+      throw new BusinessException(
+        ErrorDomain.User,
+        `user not exists: ${email}`,
+        `email '${email}' not exists`,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    return user;
+  }
+
+  async getUserByEmailWithPassword(email: string): Promise<User> {
+    const user = await this.userRepo.findUserByEmailWithPassword(email);
+    if (!user) {
+      throw new BusinessException(
+        ErrorDomain.User,
+        `user not exists: ${email}`,
+        `email '${email}' not exists`,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    return user;
+  }
+
   async getUserById(id: string): Promise<User> {
+    const user = await this.userRepo.findUserById(id);
+    if (!user) {
+      throw new BusinessException(
+        ErrorDomain.User,
+        `user not exists: ${id}`,
+        `ID '${id}' not exists`,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    return user;
     return await this.userRepo.findUserById(id);
   }
 
