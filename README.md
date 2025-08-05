@@ -17,7 +17,7 @@ NestJS 프레임워크를 기반으로 구축되었으며, PostgreSQL 데이터�
 
 ## 주요 기능
 
-- **사용자 인증**: `ls -R`로 확인된 `auth` 모듈을 통해 JWT(Access/Refresh Token) 기반의 사용자 인증 기능을 제공합니다.
+- **사용자 인증**: `auth` 모듈을 통해 JWT(Access/Refresh Token) 기반의 사용자 인증 기능을 제공합니다.
   - 회원가입, 로그인, 로그아웃 기능을 구현했습니다.
   - Access Token 만료 시 Refresh Token을 이용한 재발급 기능을 구현했습니다.
 - **API 문서화**: `swagger` 설정을 통해 API 문서를 자동화하고, Basic Auth로 접근을 제어합니다.
