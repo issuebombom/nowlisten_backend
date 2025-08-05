@@ -12,8 +12,12 @@
 
 ## 프로젝트 개요
 
+슬랙과 같은 업무 협업을 위한 서비스를 개인적으로 보유하고 싶어 시작한 프로젝트 입니다.  
 `nowlisten_backend`는 `nowlisten` 프로젝트의 백엔드 API 서버입니다.  
 NestJS 프레임워크를 기반으로 구축되었으며, PostgreSQL 데이터베이스와 연동하여 동작합니다.
+
+<img width="2290" height="1072" alt="ERD" src="https://github.com/user-attachments/assets/9d89a479-9c12-4e94-91da-a23d4424a0ba" />
+
 
 ## 주요 기능
 
