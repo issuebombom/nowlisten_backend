@@ -5,7 +5,7 @@ import { ExtractJwt, Strategy } from 'passport-jwt';
 import { JwtTokenPayload } from '../services/auth.service';
 import { BusinessException } from 'src/exception/business-exception';
 import { ErrorDomain } from 'src/common/types/error-domain.type';
-import { IAuthGuardUser } from '../interfaces/auth-guard-user.interface';
+import { IJwtUserProfile } from '../interfaces/auth-guard-user.interface';
 import { RefreshTokenService } from '../services/refresh-token.service';
 import { UserService } from '../services/user.service';
 
@@ -23,7 +23,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
-  async validate(payload: JwtTokenPayload): Promise<IAuthGuardUser> {
+  async validate(payload: JwtTokenPayload): Promise<IJwtUserProfile> {
     const found = await this.refreshTokenService.hasToken(payload.jti);
     const user = await this.userService.getUserById(payload.sub);
     if (!found || !user) {

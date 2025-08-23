@@ -14,6 +14,10 @@ import { RefreshTokenService } from './services/refresh-token.service';
 import { PassportModule } from '@nestjs/passport';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { GoogleAuthGuard } from './guards/google-auth.guard';
+import { GoogleStrategy } from './strategies/google.strategy';
+import { CacheModule } from '@nestjs/cache-manager';
+import { HttpModule } from '@nestjs/axios';
 
 @Module({
   imports: [
@@ -30,6 +34,17 @@ import { JwtAuthGuard } from './guards/jwt-auth.guard';
         },
       }),
     }),
+    CacheModule.registerAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => ({
+        ttl: configService.get<number>('CACHE_DEFAULT_TTL'), // 초 단위
+      }),
+    }),
+    HttpModule.register({
+      timeout: 5000,
+      maxRedirects: 5,
+    }),
   ],
   controllers: [AuthController, UserController],
   providers: [
@@ -39,6 +54,8 @@ import { JwtAuthGuard } from './guards/jwt-auth.guard';
 
     JwtStrategy,
     JwtAuthGuard,
+    GoogleStrategy,
+    GoogleAuthGuard,
 
     UserRepository,
     RefreshTokenRepository,
