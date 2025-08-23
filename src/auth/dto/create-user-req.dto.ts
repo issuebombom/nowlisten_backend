@@ -2,6 +2,7 @@ import { IsEmail, IsNotEmpty, IsString, Length } from 'class-validator';
 
 export class CreateUserReqDto {
   @IsString()
+  @IsNotEmpty()
   @Length(1, 50)
   name: string;
 
@@ -15,7 +16,6 @@ export class CreateUserReqDto {
   @Length(8, 100)
   password: string;
 
-  @IsNotEmpty()
   @IsString()
   @Length(1, 30)
   phone: string;

@@ -10,6 +10,7 @@ export class BusinessException extends Error {
     public readonly message: string, // 내부 로깅용 메시지
     public readonly apiMessage: string, // api용 메시지
     public readonly status: HttpStatus,
+    public readonly details?: string[], // ex) validation error
   ) {
     super(message);
     this.id = BusinessException.genId();

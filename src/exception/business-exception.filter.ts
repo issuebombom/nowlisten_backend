@@ -11,18 +11,11 @@ import { ErrorDomain } from 'src/common/types/error-domain.type';
 import { BusinessException } from './business-exception';
 import omit from 'lodash/omit';
 
-interface ErrorResponseBody {
-  id: string;
-  domain: ErrorDomain;
-  message: string;
-  apiMessage: string;
-  status: HttpStatus;
-  timestamp: Date;
-}
+interface ErrorResponseBody extends Omit<BusinessException, 'name'> {}
 
 @Catch(Error)
 export class BusinessExceptionFilter implements ExceptionFilter {
-  private readonly logger = new Logger(BusinessExceptionFilter.name);
+  private readonly logger = new Logger(BusinessException.name);
 
   catch(exception: Error, host: ArgumentsHost) {
     let errorResponseBody: ErrorResponseBody;
@@ -35,6 +28,7 @@ export class BusinessExceptionFilter implements ExceptionFilter {
         domain: exception.domain,
         message: exception.message,
         apiMessage: exception.apiMessage,
+        details: exception.details,
         status: exception.status,
         timestamp: exception.timestamp,
       };
@@ -62,13 +56,19 @@ export class BusinessExceptionFilter implements ExceptionFilter {
 
     // logging
     this.logger.error(
-      `exception: ${JSON.stringify({
-        path: request.url,
-        ...errorResponseBody,
-      })}`,
+      `exception: ${JSON.stringify(
+        {
+          path: request.url,
+          ...errorResponseBody,
+        },
+        null,
+        2,
+      )}`,
     );
 
     // client response (message 제외)
-    response.status(status).json(omit(errorResponseBody, ['message']));
+    response
+      .status(status)
+      .json(omit(errorResponseBody, ['id', 'domain', 'message']));
   }
 }
