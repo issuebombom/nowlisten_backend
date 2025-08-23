@@ -99,7 +99,7 @@ NestJS 프레임워크를 기반으로 구축되었으며, PostgreSQL 데이터�
 
 애플리케이션 실행 후, `http://localhost:3001/api-docs`에서 API 문서를 확인할 수 있습니다.
 
-## 고민한 점
+## 개발 과정에서 공부한 내용 정리
 
 ### CORS 설정
 
@@ -129,13 +129,13 @@ NestJS의 기본 `HttpException`을 확장한 `BusinessException`을 정의하�
 
 - **`OmitType`**: 특정 필드를 제외한 DTO를 생성합니다. (e.g., `password`를 제외한 사용자 정보 DTO)
 - **`IntersectionType`**: 여러 DTO를 조합하여 새로운 DTO를 생성합니다.
+- _(미적용: 가독성이 떨어짐)_
 
 ### 유효성 검사
 
-`class-validator`와 `ValidationPipe`를 사용하여 DTO의 유효성을 검사하고, 커스텀 필터를 통해 명확한 에러 메시지를 반환합니다.
+- `class-validator`와 `ValidationPipe`를 사용하여 DTO의 유효성을 검사하고, 커스텀 필터를 적용하여 기본 BadRequestException이 아닌 BusinessException 형태로 출력하여 예외 응답 바디의 일관성을 유지합니다.
 
-- `ValidationPipe`를 전역으로 적용하여 모든 요청에 대한 유효성 검사를 수행합니다.
-- `validationExceptionFilter`를 통해 여러 유효성 검사 오류 중 우선순위가 높은 메시지를 선택하여 반환합니다.
+- `ValidationPipe`를 전역으로 설정하여 class-validator 데코레이터가 달린 모든 dto 대한 유효성 검사를 수행합니다.
 
 ### Timestamp 저장
 
@@ -146,7 +146,7 @@ NestJS의 기본 `HttpException`을 확장한 `BusinessException`을 정의하�
 
 ### 인증 아키텍처
 
-Next.js와 같은 프론트엔드 프레임워크와의 연동을 고려하여, 백엔드는 상태 없이(stateless) JWT 발급 및 검증에만 집중하고, 프론트엔드(Next.js 서버)가 세션 쿠키를 관리하는 방식으로 역할을 분리했습니다.
+Next.js와 같은 프론트엔드 프레임워크와의 연동을 고려하여, 백엔드는 JWT 발급 및 검증에 집중하고, 프론트엔드(Next.js 서버)가 세션 쿠키를 관리하는 방식으로 역할을 분리했습니다.
 
 - **백엔드**: JWT(Access/Refresh Token)를 발급하고, 유효성을 검증합니다.
 - **프론트엔드**: 발급받은 토큰을 쿠키에 저장하고, 요청 시 헤더에 담아 전송합니다. Access Token 만료 시 Refresh Token을 사용하여 재발급을 요청합니다.
