@@ -181,7 +181,8 @@ export class CreateUserResDto extends IntersectionType(
 그러나 POST 유저 생성에 대한 요청, 응답의 경우 응답 DTO가 요청 DTO와 중복되는 요소가 많아 코드 재사용성을 고민했고, 위 코드가 그 결과이다.  
 Swagger 모듈의 OmitType 함수를 활용하여 ReqDto에서 password 필드를 제외한 Dto를 생성했다.  
 또한 BaseEntity(id, createdAt, updatedAt 필드)에 맞춘 Dto인 BaseResDto를 덧붙였다.  
-typescript가 기본적으로 다중 상속을 지원하지 않으므로 Swagger의 IntersectionType을 활용하여 두 DTO를 합쳤다.
+typescript가 기본적으로 다중 상속을 지원하지 않으므로 Swagger의 IntersectionType을 활용하여 두 DTO를 합쳤다.  
+_(미적용: 가독성이 떨어짐)_
 
 ## class-transformer를 활용한 응답 body 필터링
 
@@ -208,11 +209,12 @@ return userWithoutPassword;
 app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
 ```
 
+유저 정보 조회 시 password를 제외하려는 의도에서 시작  
 Swagger를 활용한 CreateUserResDto 생성은 API 명세에는 password 필드가 빠진 결과를 보여주지만 실제 동작에는 영향을 주지 않는다.  
 위와 같이 유저 생성 POST 요청에 대한 응답에 password를 제외하기 위한 방법 중 처음에는 CASE 2를 선택했다.  
 CASE 2는 class-transformer 모듈 의존성을 갖고있으며, MVP 단계의 서비스에 굳이 사용할 필요가 있을까라는 생각이 들었다.  
 하지만 향후 응답값 노출 프로퍼티 선택이 dto에서 @Exclude, @Expose 데코레이터로 간단하고 직관적으로 적용할 수 있다는 장점이 있다.  
-결론적으로 CASE 3를 적용하여 글로벌 인터셉터를 적용했다.
+결론적으로 CASE 3를 적용하여 글로벌 인터셉터를 적용하였다.
 
 ## class-validator로 validation filter 설정
 
@@ -220,42 +222,34 @@ useGlobalPipe로 ValidationPipe를 설정하여 전역 validation 설정
 
 ```typescript
 export const validationExceptionFilter = (errors: ValidationError[]) => {
-  const firstValidationError = errors[0];
-  // 방어 코드
-  if (!firstValidationError) {
-    return new BusinessException(
-      ErrorDomain.Validation,
-      'Validation failed, but no errors were provided',
-      'Internal server error',
-      HttpStatus.INTERNAL_SERVER_ERROR,
-    );
-  }
-  const invalidProperty = firstValidationError.property;
-  const constraints = firstValidationError.constraints;
-  // 에러메시지 출력 우선순위 선정을 위한 코드 (Length 에러 고정 포함 이슈)
-  const apiMessage =
-    constraints.isNotEmpty ||
-    constraints.isString ||
-    constraints.isNumber ||
-    constraints.whitelistValidation ||
-    Object.values(firstValidationError.constraints)[0];
+  const invalidProperties = errors.flatMap((error) => error.property);
+  const validationErrorMessages = errors.flatMap((error) =>
+    Object.values(error.constraints),
+  );
 
   return new BusinessException(
     ErrorDomain.Validation,
-    `invalid property: ${invalidProperty}`,
-    apiMessage,
+    `invalid property: ${invalidProperties.join(', ')}`,
+    validationErrorMessages,
     HttpStatus.BAD_REQUEST,
   );
 };
+
+// 결과
+{
+    "apiMessage": [
+        "name must be longer than or equal to 1 characters",
+        "name should not be empty"
+    ],
+    "status": 400,
+    "timestamp": "2025-08-23T08:15:13.736Z"
+}
 ```
 
 validationError에 대한 커스텀 필터를 설정하였다.  
-class-validator는 발생한 모든 에러 메시지를 constrains에 배열로 모두 담아 보관하는 점에서 문제가 있다.
-
-- 단순히 constrains 배열의 0 또는 -1번째 인덱싱으로 에러 메시지를 출력하면 다양한 validationError가 발생했더라도 하나씩만 클라이언트에 노출해서 유저가 순차적으로 에러를 해결하도록 유도하면 된다고 생각했다.
-- 하지만 대부분의 검증 오류가 Length 검증 오류를 동반한다. (ex. IsString 검증 에러가 발생해도 Length 에러가 발생한 것으로 취급되는데, 이는 IsString 검증 에러로 인해 Length에 undefined가 전달되기 때문이다.)
-- 결론적으로 IsString에 대한 에러 발생이 원인임에도 Length 오류 메시지가 전달될 가능성이 생긴다.
-- 위 사항의 해결을 위해 검증 에러 apiMessage 전달에 우선순위를 매겨 에러 내역을 하나씩 출력하도록 하였다.
+class-validator는 발생한 모든 에러 메시지를 constrains에 key: value 형태로 담는다.  
+에러가 발생한 필드에 대한 값은 property에 string 형태로 담긴다.  
+위 사항을 토대로 BusinessException을 꾸려 예외 응답의 일관성을 유지한다.
 
 ## timestamp 저장 관련 이슈
 
@@ -300,3 +294,45 @@ DB에 timestamp로 저장하면 안될까?
 
 - `WHERE 'created_at' > NOW() - INTERVAL '1 hour'`과 같은 쿼리 사용에 제약이 생긴다.
 - 시각적으로 DB를 들여다봐야할 경우 timestamp는 전혀 와닿지 않는다.
+
+## User Select 시 디폴트로 password 제외 설정
+
+- user entity에서 패스워드 필드 옵션 설정에서 select: false로 간단히 해결
+- 이렇게 할 경우 addSelect로 특별히 지정해야 출력이 됨
+
+## Jwt Guard 설정
+
+- 유저 자격에 따른 접근 권한을 확인할 떄 프론트에서 access 토큰을 Authorization으로 받는다.
+- 이를 Guard로 설정하여 토큰 인증과 그에 따른 예외 처리를 한다.
+- 예외 처리는 일관성 유지를 위해 BusinessException 형태가 적용되도록 한다.
+
+## Refresh 토큰 관리
+
+- next.js서버에서 세션 쿠키(refresh)를 생성했다고 가정했을 때 로그 아웃 시 자체적으로 세션 쿠키 제거가 가능함
+- 하지만 내부적으로 refresh를 DB에 보관함으로써 토큰 탈취 시 해당 유저의 토큰을 삭제함으로써 대응 가능하도록 한다.
+- 또한 정기적으로 DB에서 expired된 jti에 대한 삭제 cron을 설정한다. (토큰 검증 과정에서 expired 토큰은 예외처리 되므로 실시간 삭제 불필요)
+
+## 구글(소셜) 로그인 시 access, refresh 토큰 프론트 전달 방법
+
+소셜 로그인 시 백엔드의 callback에서 프론트로 리다이렉트할 때 jwt 전달할 경우 url이 브라우저에 그대로 남으므로 세션id와 같은 임시토큰을 기반으로 nextjs 서버에서 jwt를 따로 요청하도록 한다.
+
+- callback에서 소셜 유저 정보를 기반으로 access, refresh를 생성한다.
+- 세션id 생성 후 메모리에 { access, refresh }를 key: value로 연결해 둔다. (redis, in-memory)
+- 프론트(nextjs) 서버로 세션id를 query에 담아 GET 요청한다.
+- 프론트는 받은 세션id를 body에 담아 jwt 획득을 위한 POST 요청을 서버로 보낸다.
+- 서버는 메모리 get으로 임시 토큰 검증(획득) 후 access, refresh를 응답한다.
+- 프론트는 받은 jwt를 토대로 유저 세션 쿠키를 등록한다.
+
+## Nextjs로 프론트 구현을 위한 간단 정리
+
+- Nextjs는 폴더가 곧 url이 된다.
+- page.js가 html을 구성하여 브라우저에 UI를 출력하는 역할을 한다.
+- app폴더 내 api 폴더를 두어 서버 역할(백엔드 역할)을 부여할 수 있다. 그래서 page.js에서 fetch로 api 폴더에 접근할 수 있어 사실상 nextjs만으로 풀스텍 구현이 가능하다.
+- 컴포넌트를 서버 컴포넌트 vs 클라이언트 컴포넌트로 구별한다.
+  - 클라이언트 컴포넌트는 동적 구현을 위한 상태 관리(useState 등)를 적용할 경우 'use client'로 적용
+  - 그 외 html 완성 및 랜더링은 서버 컴포넌트(nextjs의 디폴트 설정)로 구현한다.
+- Route Handler vs Server Action
+  - nextjs 13에서 서버 액션이 도입되었다. 이는 api폴더로 fetch를 날려 데이터 요청을 하는 route 방식과 달리 직접 데이터 관련 로직 함수를 수행하는 방식이다.
+  - Route Handler는 fetch를 날리는 방식 vs 필요한 로직 함수를 직접 실행시키는 방식
+  - nestjs와 같은 백엔드 서버가 있다고 가정했을 때 Route Handler는 일종의 프록시 역할을 하게 된다. 즉 nextjs는 nestjs에 도달하기 위해 fetch를 두 번 날리게 된다.
+  - 서버 액션은 nestjs에 fetch를 날리는 함수 자체를 실행하는 것이므로 request는 한 번으로 끝난다.
