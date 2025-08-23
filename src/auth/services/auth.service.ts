@@ -1,7 +1,7 @@
 import argon2 from 'argon2';
 import { v4 as uuidv4 } from 'uuid';
 
-import { HttpStatus, Injectable } from '@nestjs/common';
+import { HttpStatus, Inject, Injectable } from '@nestjs/common';
 import { BusinessException } from 'src/exception/business-exception';
 import { ErrorDomain } from 'src/common/types/error-domain.type';
 import { ConfigService } from '@nestjs/config';
@@ -10,9 +10,17 @@ import { User } from '../entities/user.entity';
 
 import { UserService } from './user.service';
 import { JwtService } from '@nestjs/jwt';
-import { LoginResDto } from '../dto/login-res.dto';
 import { RefreshTokenService } from './refresh-token.service';
 import { RefreshResDto } from '../dto/refresh-res.dto';
+import { ISocialUserProfile } from '../interfaces/auth-guard-user.interface';
+import { SocialProvider } from 'src/common/types/social-provider.type';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { Cache } from 'cache-manager';
+
+export type JwtToken = {
+  access: string;
+  refresh: string;
+};
 
 export type JwtTokenPayload = {
   sub: string;
@@ -27,10 +35,24 @@ export class AuthService {
     private readonly userService: UserService,
     private readonly jwtService: JwtService,
     private readonly refreshTokenService: RefreshTokenService,
+
+    @Inject(CACHE_MANAGER)
+    private readonly cacheManager: Cache,
   ) {}
 
-  async login(dto: LoginReqDto): Promise<LoginResDto> {
+  async login(dto: LoginReqDto): Promise<JwtToken> {
     const user = await this.userService.getUserByEmailWithPassword(dto.email);
+
+    // ! NOTE: 소셜 가입 + 로컬 가입(이중 가입)을 허용할 것인가 말 것인가?
+    if (user.provider !== SocialProvider.LOCAL) {
+      throw new BusinessException(
+        ErrorDomain.Auth,
+        `already exists via social login: ${dto.email}`,
+        `email ${dto.email} registered with social login. try social login`,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
     const verified = await argon2.verify(user.password, dto.password);
     if (!verified) {
       throw new BusinessException(
@@ -52,6 +74,44 @@ export class AuthService {
     ]);
 
     return { access, refresh };
+  }
+
+  async googleLogin(profile: ISocialUserProfile): Promise<string> {
+    // 유저 생성 또는 획득
+    const user = await this.userService.createSocialUser(profile);
+
+    // 토큰 발행
+    const [accessPayload, refreshPayload] = await Promise.all([
+      this.createJwtTokenPayload(user.id),
+      this.createJwtTokenPayload(user.id),
+    ]);
+
+    const [access, refresh] = await Promise.all([
+      this.createAccessToken(accessPayload),
+      this.createRefreshToken(refreshPayload, user),
+    ]);
+
+    // ! NOTE: 임시 토큰 생성 후 캐시 등록 (추후 레디스로 대체 필요)
+    const sessionId = AuthService.genId();
+    await this.cacheManager.set(sessionId, { access, refresh }, 5000);
+
+    return sessionId;
+  }
+
+  async getAccessRefresh(sessionId: string) {
+    const value = await this.cacheManager.get<JwtToken>(sessionId);
+    if (!value) {
+      throw new BusinessException(
+        ErrorDomain.Auth,
+        `token has expired`,
+        `sessionid ${sessionId} has expired`,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    // 캐시 삭제
+    this.cacheManager.del(sessionId);
+    return value;
   }
 
   refresh(userId: string): RefreshResDto {
@@ -122,5 +182,13 @@ export class AuthService {
         );
     }
     return new Date(Date.now() + milliseconds);
+  }
+
+  private static genId(length = 16): string {
+    const p = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    return [...Array(length)].reduce(
+      (a) => a + p[Math.floor(Math.random() * p.length)],
+      '',
+    );
   }
 }

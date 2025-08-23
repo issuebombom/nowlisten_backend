@@ -4,6 +4,7 @@ import { User } from '../entities/user.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { CreateUserReqDto } from '../dto/create-user-req.dto';
 import { UserRole } from 'src/common/types/user-role.type';
+import { ISocialUserProfile } from '../interfaces/auth-guard-user.interface';
 
 @Injectable()
 export class UserRepository {
@@ -19,6 +20,16 @@ export class UserRepository {
     user.password = hashedPassword;
     user.phone = dto.phone;
     user.role = UserRole.User;
+    return this.repo.save(user);
+  }
+
+  createSocialUser(profile: ISocialUserProfile): Promise<User> {
+    const user = new User();
+    user.id = profile.providerId;
+    user.name = profile.name;
+    user.email = profile.email;
+    user.role = UserRole.User;
+    user.provider = profile.provider;
     return this.repo.save(user);
   }
 

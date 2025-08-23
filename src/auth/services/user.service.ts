@@ -6,6 +6,8 @@ import { BusinessException } from 'src/exception/business-exception';
 import { ErrorDomain } from 'src/common/types/error-domain.type';
 import argon2 from 'argon2';
 import { CreateUserResDto } from '../dto/create-user-res.dto';
+import { ISocialUserProfile } from '../interfaces/auth-guard-user.interface';
+import { SocialProvider } from 'src/common/types/social-provider.type';
 
 @Injectable()
 export class UserService {
@@ -14,12 +16,21 @@ export class UserService {
   async createUser(dto: CreateUserReqDto): Promise<CreateUserResDto> {
     const user = await this.userRepo.findUserByEmail(dto.email);
     if (user) {
-      throw new BusinessException(
-        ErrorDomain.Auth,
-        `already exists: ${dto.email}`,
-        `email ${dto.email} already exists`,
-        HttpStatus.BAD_REQUEST,
-      );
+      if (user.provider !== SocialProvider.LOCAL) {
+        throw new BusinessException(
+          ErrorDomain.Auth,
+          `already exists via social login: ${dto.email}`,
+          `email ${dto.email} already exists via social login`,
+          HttpStatus.BAD_REQUEST,
+        );
+      } else {
+        throw new BusinessException(
+          ErrorDomain.Auth,
+          `already exists: ${dto.email}`,
+          `email ${dto.email} already exists`,
+          HttpStatus.BAD_REQUEST,
+        );
+      }
     }
 
     const hashedPassword = await argon2.hash(dto.password, {
@@ -27,6 +38,26 @@ export class UserService {
     });
 
     return await this.userRepo.createUser(dto, hashedPassword);
+  }
+
+  async createSocialUser(profile: ISocialUserProfile): Promise<User> {
+    // 이메일 중복, 소셜 유저 유무 확인
+    const user = await this.userRepo.findUserByEmail(profile.email);
+    if (!user) {
+      const createdUser = await this.userRepo.createSocialUser(profile);
+      return createdUser;
+    }
+
+    if (user && user.provider === SocialProvider.LOCAL) {
+      throw new BusinessException(
+        ErrorDomain.Auth,
+        `already registered with a local account: ${profile.email}`,
+        `email ${profile.email} already registered with a regular account`,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    return user;
   }
 
   async getUserByEmail(email: string): Promise<User> {
