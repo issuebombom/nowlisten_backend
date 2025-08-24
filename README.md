@@ -8,7 +8,7 @@
 - [프로젝트 구조](#프로젝트-구조)
 - [실행 방법](#실행-방법)
 - [API 명세](#api-명세)
-- [고민한 점](#고민한-점)
+- [고민한 점](#개발-과정에서-공부한-내용-정리)
 
 ## 프로젝트 개요
 
@@ -17,7 +17,6 @@
 NestJS 프레임워크를 기반으로 구축되었으며, PostgreSQL 데이터베이스와 연동하여 동작합니다.
 
 <img width="2290" height="1072" alt="ERD" src="https://github.com/user-attachments/assets/9d89a479-9c12-4e94-91da-a23d4424a0ba" />
-
 
 ## 주요 기능
 
@@ -154,3 +153,26 @@ Next.js와 같은 프론트엔드 프레임워크와의 연동을 고려하여, 
 
 - **백엔드**: JWT(Access/Refresh Token)를 발급하고, 유효성을 검증합니다.
 - **프론트엔드**: 발급받은 토큰을 쿠키에 저장하고, 요청 시 헤더에 담아 전송합니다. Access Token 만료 시 Refresh Token을 사용하여 재발급을 요청합니다.
+
+### Jwt Guard 설정
+
+- 유저 자격에 따른 접근 권한을 확인할 떄 프론트에서 access 토큰을 Authorization으로 받는다.
+- 이를 Guard로 설정하여 토큰 인증과 그에 따른 예외 처리를 한다.
+- 예외 처리는 일관성 유지를 위해 BusinessException 형태가 적용되도록 한다.
+
+### Refresh 토큰 관리
+
+- next.js서버에서 세션 쿠키(refresh)를 생성했다고 가정했을 때 로그 아웃 시 자체적으로 세션 쿠키 제거가 가능함
+- 하지만 내부적으로 refresh를 DB에 보관함으로써 토큰 탈취 시 해당 유저의 토큰을 삭제함으로써 대응 가능하도록 한다.
+- 또한 정기적으로 DB에서 expired된 jti에 대한 삭제 cron을 설정한다. (토큰 검증 과정에서 expired 토큰은 예외처리 되므로 실시간 삭제 불필요)
+
+### 소셜 로그인 시 access, refresh 토큰 프론트 전달 방법
+
+소셜 로그인 인증 후 callback에서 프론트로 리다이렉트할 때 jwt 전달하지 않고(보안 취약성) 세션id와 같은 임시토큰을 전달하여 이를 기반으로 nextjs 서버에서 jwt를 백엔드에 따로 요청하도록 한다.
+
+- callback에서 소셜 유저 정보를 기반으로 access, refresh를 생성한다.
+- 세션id(임시토큰) 생성 후 메모리에 { access, refresh }를 key: value로 연결해 둔다. (redis, in-memory)
+- nextjs 서버로 세션id를 query에 담아 GET 요청(리다이렉트)한다.
+- 프론트는 받은 세션id를 body에 담아 jwt 획득을 위한 POST 요청을 서버로 보낸다.
+- 서버는 메모리 get으로 임시 토큰 검증(획득) 후 access, refresh를 응답한다.
+- 프론트는 받은 jwt를 토대로 유저 세션 쿠키를 등록한다.
