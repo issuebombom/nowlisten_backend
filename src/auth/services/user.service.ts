@@ -8,6 +8,7 @@ import { CreateUserResDto } from '../dto/create-user-res.dto';
 import { ISocialUserProfile } from '../interfaces/auth-guard-user.interface';
 import { SocialProvider } from 'src/common/types/social-provider.type';
 import { PasswordService } from './password.service';
+import { UpdateUserReqDto } from '../dto/update-user-req.dto';
 
 @Injectable()
 export class UserService {
@@ -106,6 +107,13 @@ export class UserService {
     return await this.userRepo.findUsers();
   }
 
+  async updateMyProfile(
+    id: string,
+    updateProfile: UpdateUserReqDto,
+  ): Promise<void> {
+    await this.userRepo.updateUser(id, updateProfile);
+  }
+
   async changePassword(
     id: string,
     currentPassword: string,
@@ -120,10 +128,14 @@ export class UserService {
      * 패드워드 변경 적용
      */
 
-    const user = await this.getUserById(id);
+    const user = await this.userRepo.findUserById(id);
     await this.passwordService.comparePassword(currentPassword, user.password);
     const newHashedPassword =
       await this.passwordService.hashedPassword(newPassword);
     await this.userRepo.updatePassword(id, newHashedPassword);
+  }
+
+  deleteUser(id: string): void {
+    this.userRepo.deleteUser(id);
   }
 }

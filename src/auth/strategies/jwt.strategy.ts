@@ -1,10 +1,8 @@
-import { HttpStatus, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { JwtTokenPayload } from '../services/auth.service';
-import { BusinessException } from 'src/exception/business-exception';
-import { ErrorDomain } from 'src/common/types/error-domain.type';
 import { IJwtUserProfile } from '../interfaces/auth-guard-user.interface';
 import { RefreshTokenService } from '../services/refresh-token.service';
 import { UserService } from '../services/user.service';
@@ -24,15 +22,9 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: JwtTokenPayload): Promise<IJwtUserProfile> {
-    const user = await this.userService.getUserById(payload.sub);
-    if (!user) {
-      throw new BusinessException(
-        ErrorDomain.Auth,
-        `user not exists: ${payload.jti}`,
-        `user not exists`,
-        HttpStatus.UNAUTHORIZED,
-      );
-    }
+    // getUserById에서 유저 존재 확인
+    await this.userService.getUserById(payload.sub);
+
     // passport는 아래 반환 값을 req.user에 자동으로 첨부
     return { userId: payload.sub, iat: payload.iat, jti: payload.jti };
   }

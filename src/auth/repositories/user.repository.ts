@@ -5,6 +5,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { CreateUserReqDto } from '../dto/create-user-req.dto';
 import { UserRole } from 'src/common/types/user-role.type';
 import { ISocialUserProfile } from '../interfaces/auth-guard-user.interface';
+import { UpdateUserReqDto } from '../dto/update-user-req.dto';
 
 @Injectable()
 export class UserRepository {
@@ -53,7 +54,15 @@ export class UserRepository {
     return this.repo.find({ take: 50 });
   }
 
+  updateUser(id: string, profile: UpdateUserReqDto) {
+    return this.repo.update(id, profile);
+  }
+
   updatePassword(id: string, newHashedPassword: string) {
     return this.repo.update(id, { password: newHashedPassword });
+  }
+
+  deleteUser(id: string) {
+    return this.repo.delete(id);
   }
 }
