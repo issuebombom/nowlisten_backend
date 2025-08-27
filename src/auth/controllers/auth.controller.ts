@@ -133,7 +133,7 @@ export class AuthController {
   @Post('logout')
   @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: '해당 디바이스에서 로그아웃' })
-  @ApiBearerAuth('token')
+  @ApiBearerAuth('refresh')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiResponse({
     status: HttpStatus.NO_CONTENT,
@@ -146,7 +146,7 @@ export class AuthController {
   @Post('logout-all-devices')
   @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: '모든 디바이스에서 로그아웃' })
-  @ApiBearerAuth('token')
+  @ApiBearerAuth('refresh')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiResponse({
     status: HttpStatus.NO_CONTENT,
@@ -159,12 +159,12 @@ export class AuthController {
   @Post('refresh')
   @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: '엑세스 토큰 재발행' })
-  @ApiBearerAuth('token')
+  @ApiBearerAuth('access')
   @ApiResponse({
     status: HttpStatus.CREATED,
     description: '엑세스 토큰 재발행 완료',
   })
   async refresh(@AuthUser() user: IJwtUserProfile): Promise<RefreshResDto> {
-    return new RefreshResDto(this.authService.refresh(user.userId));
+    return new RefreshResDto(await this.authService.refresh(user));
   }
 }
