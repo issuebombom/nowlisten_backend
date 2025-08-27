@@ -52,4 +52,8 @@ export class UserRepository {
   findUsers(): Promise<User[]> {
     return this.repo.find({ take: 50 });
   }
+
+  updatePassword(id: string, newHashedPassword: string) {
+    return this.repo.update(id, { password: newHashedPassword });
+  }
 }

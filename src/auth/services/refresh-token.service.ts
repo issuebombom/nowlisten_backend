@@ -14,7 +14,7 @@ export class RefreshTokenService {
   }
 
   async hasToken(jti: string): Promise<boolean> {
-    const found = this.refreshTokenRepo.getRefreshTokenByJti(jti);
+    const found = await this.refreshTokenRepo.getRefreshTokenByJti(jti);
     return !!found;
   }
 

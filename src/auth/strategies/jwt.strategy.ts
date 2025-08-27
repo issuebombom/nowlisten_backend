@@ -24,13 +24,12 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: JwtTokenPayload): Promise<IJwtUserProfile> {
-    const found = await this.refreshTokenService.hasToken(payload.jti);
     const user = await this.userService.getUserById(payload.sub);
-    if (!found || !user) {
+    if (!user) {
       throw new BusinessException(
         ErrorDomain.Auth,
-        `token not exists: ${payload.jti}`,
-        `token not exists`,
+        `user not exists: ${payload.jti}`,
+        `user not exists`,
         HttpStatus.UNAUTHORIZED,
       );
     }
