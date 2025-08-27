@@ -17,7 +17,7 @@ class IsPasswordConstraint implements ValidatorConstraintInterface {
   }
 
   defaultMessage() {
-    return 'password must contain at least one letter, one number, and one special character';
+    return 'password must contain uppercase, lowercase, number, and special character';
   }
 }
 

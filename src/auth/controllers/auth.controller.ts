@@ -78,6 +78,7 @@ export class AuthController {
 
   @Get('google/callback')
   @ApiOperation({ summary: '구글 oauth2.0 callback' })
+  @HttpCode(HttpStatus.FOUND)
   @ApiResponse({
     status: HttpStatus.FOUND,
     description: '프론트엔드 callback으로 리다이렉트 with querystring(code)',

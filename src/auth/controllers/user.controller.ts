@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  HttpCode,
   HttpStatus,
   Patch,
   Put,
@@ -46,6 +47,7 @@ export class UserController {
   @Put('me')
   @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: '프로필 내용 수정' })
+  @HttpCode(HttpStatus.NO_CONTENT)
   @ApiResponse({
     status: HttpStatus.NO_CONTENT,
     description: '프로필 수정 완료',
@@ -60,6 +62,7 @@ export class UserController {
   @Patch('me/password')
   @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: '패스워드 변경' })
+  @HttpCode(HttpStatus.NO_CONTENT)
   @ApiResponse({
     status: HttpStatus.NO_CONTENT,
     description: '패스워드 변경 완료',
@@ -80,6 +83,7 @@ export class UserController {
   @Delete('me')
   @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: '유저 삭제' })
+  @HttpCode(HttpStatus.NO_CONTENT)
   @ApiResponse({
     status: HttpStatus.NO_CONTENT,
     description: '유저 삭제 완료',
