@@ -165,6 +165,6 @@ export class AuthController {
     description: '엑세스 토큰 재발행 완료',
   })
   async refresh(@AuthUser() user: IJwtUserProfile): Promise<RefreshResDto> {
-    return new RefreshResDto(await this.authService.refresh(user));
+    return await this.authService.refresh(user);
   }
 }

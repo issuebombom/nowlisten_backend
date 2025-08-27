@@ -1,4 +1,5 @@
-import { IsEmail, IsNotEmpty, IsString } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsString, Length } from 'class-validator';
+import { IsPassword } from '../decorators/is-password.decorator';
 
 export class LoginReqDto {
   @IsNotEmpty()
@@ -7,5 +8,7 @@ export class LoginReqDto {
 
   @IsNotEmpty()
   @IsString()
+  @Length(8, 100)
+  @IsPassword()
   password: string;
 }
