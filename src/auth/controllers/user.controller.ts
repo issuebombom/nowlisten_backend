@@ -17,6 +17,7 @@ import { IJwtUserProfile } from '../interfaces/auth-guard-user.interface';
 import { ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { UpdateUserReqDto } from '../dto/update-user-req.dto';
 import { GetUserResDto } from '../dto/get-user-res.dto';
+import { DeleteUserReqDto } from '../dto/delete-user-req.dto';
 
 @Controller('users')
 export class UserController {
@@ -83,7 +84,10 @@ export class UserController {
     status: HttpStatus.NO_CONTENT,
     description: '유저 삭제 완료',
   })
-  deleteUser(@AuthUser() user: IJwtUserProfile): void {
-    this.userService.deleteUser(user.userId);
+  async deleteUser(
+    @AuthUser() user: IJwtUserProfile,
+    @Body() deleteUserReqDto: DeleteUserReqDto,
+  ): Promise<void> {
+    await this.userService.deleteUser(user.userId, deleteUserReqDto.password);
   }
 }

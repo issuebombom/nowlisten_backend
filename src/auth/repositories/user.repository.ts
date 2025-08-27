@@ -42,6 +42,14 @@ export class UserRepository {
     return this.repo.findOneBy({ email });
   }
 
+  findUserByIdWithPassword(id: string): Promise<User> {
+    return this.repo
+      .createQueryBuilder('user')
+      .addSelect('user.password')
+      .where('id = :id', { id })
+      .getOne();
+  }
+
   findUserByEmailWithPassword(email: string): Promise<User> {
     return this.repo
       .createQueryBuilder('user')

@@ -9,11 +9,13 @@ import { ISocialUserProfile } from '../interfaces/auth-guard-user.interface';
 import { SocialProvider } from 'src/common/types/social-provider.type';
 import { PasswordService } from './password.service';
 import { UpdateUserReqDto } from '../dto/update-user-req.dto';
+import { RefreshTokenService } from './refresh-token.service';
 
 @Injectable()
 export class UserService {
   constructor(
     private readonly passwordService: PasswordService,
+    private readonly refreshTokenService: RefreshTokenService,
     private readonly userRepo: UserRepository,
   ) {}
 
@@ -135,7 +137,10 @@ export class UserService {
     await this.userRepo.updatePassword(id, newHashedPassword);
   }
 
-  deleteUser(id: string): void {
+  async deleteUser(id: string, password: string): Promise<void> {
+    const user = await this.userRepo.findUserByIdWithPassword(id);
+    await this.passwordService.comparePassword(password, user.password);
+    this.refreshTokenService.revokeAllRefreshTokens(user.id);
     this.userRepo.deleteUser(id);
   }
 }
