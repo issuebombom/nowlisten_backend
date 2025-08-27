@@ -4,14 +4,18 @@ import { CreateUserReqDto } from '../dto/create-user-req.dto';
 import { User } from '../entities/user.entity';
 import { BusinessException } from 'src/exception/business-exception';
 import { ErrorDomain } from 'src/common/types/error-domain.type';
-import argon2 from 'argon2';
 import { CreateUserResDto } from '../dto/create-user-res.dto';
 import { ISocialUserProfile } from '../interfaces/auth-guard-user.interface';
 import { SocialProvider } from 'src/common/types/social-provider.type';
+import { PasswordService } from './password.service';
+import { UpdateUserReqDto } from '../dto/update-user-req.dto';
 
 @Injectable()
 export class UserService {
-  constructor(private readonly userRepo: UserRepository) {}
+  constructor(
+    private readonly passwordService: PasswordService,
+    private readonly userRepo: UserRepository,
+  ) {}
 
   async createUser(dto: CreateUserReqDto): Promise<CreateUserResDto> {
     const user = await this.userRepo.findUserByEmail(dto.email);
@@ -32,10 +36,9 @@ export class UserService {
         );
       }
     }
-
-    const hashedPassword = await argon2.hash(dto.password, {
-      type: argon2.argon2id,
-    });
+    const hashedPassword = await this.passwordService.hashedPassword(
+      dto.password,
+    );
 
     return await this.userRepo.createUser(dto, hashedPassword);
   }
@@ -97,11 +100,42 @@ export class UserService {
       );
     }
     return user;
-    return await this.userRepo.findUserById(id);
   }
 
   // !NOTE: 배포 단계에서는 사용 금지
   async getUsers(): Promise<User[]> {
     return await this.userRepo.findUsers();
+  }
+
+  async updateMyProfile(
+    id: string,
+    updateProfile: UpdateUserReqDto,
+  ): Promise<void> {
+    await this.userRepo.updateUser(id, updateProfile);
+  }
+
+  async changePassword(
+    id: string,
+    currentPassword: string,
+    newPassword: string,
+  ): Promise<void> {
+    /**
+     * 구현 내역
+     * 해당 회원이 존재하는지 확인 (가드에서 이미 검증)
+     * 회원 정보에서 패스워드 획득
+     * 기존 패스워드에 대한 검증 필요
+     * 새 패스워드 해시화
+     * 패드워드 변경 적용
+     */
+
+    const user = await this.userRepo.findUserById(id);
+    await this.passwordService.comparePassword(currentPassword, user.password);
+    const newHashedPassword =
+      await this.passwordService.hashedPassword(newPassword);
+    await this.userRepo.updatePassword(id, newHashedPassword);
+  }
+
+  deleteUser(id: string): void {
+    this.userRepo.deleteUser(id);
   }
 }

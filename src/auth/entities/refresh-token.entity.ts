@@ -10,6 +10,6 @@ export class RefreshToken extends BaseEntity {
   @Column({ type: 'timestamptz' })
   expiresAt: Date;
 
-  @ManyToOne(() => User)
+  @ManyToOne(() => User, { onDelete: 'CASCADE' })
   user: Relation<User>;
 }

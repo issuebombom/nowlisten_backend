@@ -1,4 +1,3 @@
-import argon2 from 'argon2';
 import { v4 as uuidv4 } from 'uuid';
 
 import { HttpStatus, Inject, Injectable } from '@nestjs/common';
@@ -12,10 +11,14 @@ import { UserService } from './user.service';
 import { JwtService } from '@nestjs/jwt';
 import { RefreshTokenService } from './refresh-token.service';
 import { RefreshResDto } from '../dto/refresh-res.dto';
-import { ISocialUserProfile } from '../interfaces/auth-guard-user.interface';
+import {
+  IJwtUserProfile,
+  ISocialUserProfile,
+} from '../interfaces/auth-guard-user.interface';
 import { SocialProvider } from 'src/common/types/social-provider.type';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Cache } from 'cache-manager';
+import { PasswordService } from './password.service';
 
 export type JwtToken = {
   access: string;
@@ -34,6 +37,7 @@ export class AuthService {
     private readonly configService: ConfigService,
     private readonly userService: UserService,
     private readonly jwtService: JwtService,
+    private readonly passwordService: PasswordService,
     private readonly refreshTokenService: RefreshTokenService,
 
     @Inject(CACHE_MANAGER)
@@ -42,7 +46,6 @@ export class AuthService {
 
   async login(dto: LoginReqDto): Promise<JwtToken> {
     const user = await this.userService.getUserByEmailWithPassword(dto.email);
-
     // ! NOTE: 소셜 가입 + 로컬 가입(이중 가입)을 허용할 것인가 말 것인가?
     if (user.provider !== SocialProvider.LOCAL) {
       throw new BusinessException(
@@ -53,15 +56,7 @@ export class AuthService {
       );
     }
 
-    const verified = await argon2.verify(user.password, dto.password);
-    if (!verified) {
-      throw new BusinessException(
-        ErrorDomain.Auth,
-        'invalid credentials',
-        'invalid credentials',
-        HttpStatus.UNAUTHORIZED,
-      );
-    }
+    await this.passwordService.comparePassword(dto.password, user.password);
 
     const [accessPayload, refreshPayload] = await Promise.all([
       this.createJwtTokenPayload(user.id),
@@ -114,8 +109,17 @@ export class AuthService {
     return value;
   }
 
-  refresh(userId: string): RefreshResDto {
-    const accessPayload = this.createJwtTokenPayload(userId);
+  async refresh(user: IJwtUserProfile): Promise<RefreshResDto> {
+    const isTokenExists = await this.refreshTokenService.hasToken(user.jti);
+    if (!isTokenExists) {
+      throw new BusinessException(
+        ErrorDomain.Auth,
+        `token has expired`,
+        `token has expired`,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    const accessPayload = this.createJwtTokenPayload(user.userId);
     const access = this.createAccessToken(accessPayload);
     return { access };
   }

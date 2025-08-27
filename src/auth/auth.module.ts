@@ -1,23 +1,24 @@
 import { Module } from '@nestjs/common';
+import { JwtModule } from '@nestjs/jwt';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { PassportModule } from '@nestjs/passport';
+import { CacheModule } from '@nestjs/cache-manager';
+import { HttpModule } from '@nestjs/axios';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from './entities/user.entity';
+import { RefreshToken } from './entities/refresh-token.entity';
 import { AuthController } from './controllers/auth.controller';
 import { UserController } from './controllers/user.controller';
 import { AuthService } from './services/auth.service';
 import { UserService } from './services/user.service';
-import { ConfigModule, ConfigService } from '@nestjs/config';
-import { UserRepository } from './repositories/user.repository';
-import { RefreshToken } from './entities/refresh-token.entity';
-import { JwtModule } from '@nestjs/jwt';
-import { RefreshTokenRepository } from './repositories/refresh-token.repository';
 import { RefreshTokenService } from './services/refresh-token.service';
-import { PassportModule } from '@nestjs/passport';
+import { PasswordService } from './services/password.service';
+import { UserRepository } from './repositories/user.repository';
+import { RefreshTokenRepository } from './repositories/refresh-token.repository';
 import { JwtStrategy } from './strategies/jwt.strategy';
+import { GoogleStrategy } from './strategies/google.strategy';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { GoogleAuthGuard } from './guards/google-auth.guard';
-import { GoogleStrategy } from './strategies/google.strategy';
-import { CacheModule } from '@nestjs/cache-manager';
-import { HttpModule } from '@nestjs/axios';
 
 @Module({
   imports: [
@@ -50,6 +51,7 @@ import { HttpModule } from '@nestjs/axios';
   providers: [
     AuthService,
     UserService,
+    PasswordService,
     RefreshTokenService,
 
     JwtStrategy,

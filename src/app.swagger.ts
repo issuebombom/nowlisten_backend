@@ -18,7 +18,17 @@ export function setSwagger(app: INestApplication): void {
         name: 'Authorization',
         in: 'header',
       },
-      'token',
+      'access',
+    )
+    .addBearerAuth(
+      {
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT',
+        name: 'Authorization',
+        in: 'header',
+      },
+      'refresh',
     )
     .build();
   const documentFactory = () => SwaggerModule.createDocument(app, config);
