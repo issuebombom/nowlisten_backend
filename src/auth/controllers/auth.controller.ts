@@ -68,7 +68,7 @@ export class AuthController {
     type: LoginResDto,
   })
   async login(@Body() loginReqDto: LoginReqDto): Promise<LoginResDto> {
-    return new LoginResDto(await this.authService.login(loginReqDto));
+    return await this.authService.login(loginReqDto);
   }
 
   @Get('google')
