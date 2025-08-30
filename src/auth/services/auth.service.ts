@@ -19,6 +19,7 @@ import { SocialProvider } from 'src/common/types/social-provider.type';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Cache } from 'cache-manager';
 import { PasswordService } from './password.service';
+import { genId } from 'src/common/utils/gen-id';
 
 export type JwtToken = {
   access: string;
@@ -87,7 +88,7 @@ export class AuthService {
     ]);
 
     // ! NOTE: 임시 토큰 생성 후 캐시 등록 (추후 레디스로 대체 필요)
-    const sessionId = AuthService.genId();
+    const sessionId = genId(16);
     await this.cacheManager.set(sessionId, { access, refresh }, 5000);
 
     return sessionId;
@@ -186,13 +187,5 @@ export class AuthService {
         );
     }
     return new Date(Date.now() + milliseconds);
-  }
-
-  private static genId(length = 16): string {
-    const p = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    return [...Array(length)].reduce(
-      (a) => a + p[Math.floor(Math.random() * p.length)],
-      '',
-    );
   }
 }
