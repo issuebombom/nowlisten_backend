@@ -3,6 +3,7 @@ import { UserRole } from 'src/common/types/user-role.type';
 import { Column, Entity, OneToMany, Relation } from 'typeorm';
 import { RefreshToken } from './refresh-token.entity';
 import { SocialProvider } from 'src/common/types/social-provider.type';
+import { WorkspaceMember } from 'src/workspace/entities/workspace-member.entity';
 
 @Entity()
 export class User extends BaseEntity {
@@ -24,6 +25,9 @@ export class User extends BaseEntity {
   @Column({ type: 'enum', enum: SocialProvider, default: SocialProvider.LOCAL })
   provider: SocialProvider;
 
-  @OneToMany(() => RefreshToken, (token) => token.user, { cascade: ['remove'] })
+  @OneToMany(() => RefreshToken, (token) => token.user)
   refreshToken: Relation<RefreshToken>;
+
+  @OneToMany(() => WorkspaceMember, (member) => member.user)
+  workspaceMember: Relation<WorkspaceMember>;
 }
