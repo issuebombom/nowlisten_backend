@@ -62,6 +62,6 @@ import { GoogleAuthGuard } from './guards/google-auth.guard';
     UserRepository,
     RefreshTokenRepository,
   ],
-  exports: [],
+  exports: [UserService],
 })
 export class AuthModule {}
