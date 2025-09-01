@@ -8,6 +8,7 @@ import { addTransactionalDataSource } from 'typeorm-transactional';
 import { DataSource } from 'typeorm';
 import { WorkspaceModule } from './workspace/workspace.module';
 import { MailModule } from './mail/mail.module';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 
 @Module({
   imports: [
@@ -37,6 +38,8 @@ import { MailModule } from './mail/mail.module';
         return addTransactionalDataSource(new DataSource(options));
       },
     }),
+    EventEmitterModule.forRoot({ wildcard: false, maxListeners: 10 }),
+
     ScheduleModule.forRoot(),
 
     AuthModule,

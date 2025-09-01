@@ -20,6 +20,7 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 import { GoogleStrategy } from './strategies/google.strategy';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { GoogleAuthGuard } from './guards/google-auth.guard';
+import { UserListener } from './listeners/user.listener';
 
 @Module({
   imports: [
@@ -47,7 +48,7 @@ import { GoogleAuthGuard } from './guards/google-auth.guard';
       timeout: 5000,
       maxRedirects: 5,
     }),
-    MailModule, // ! DEBUG 메일 전송 테스트
+    MailModule,
   ],
   controllers: [AuthController, UserController],
   providers: [
@@ -63,6 +64,8 @@ import { GoogleAuthGuard } from './guards/google-auth.guard';
 
     UserRepository,
     RefreshTokenRepository,
+
+    UserListener,
   ],
   exports: [UserService],
 })

@@ -10,16 +10,17 @@ import { SocialProvider } from 'src/common/types/social-provider.type';
 import { PasswordService } from './password.service';
 import { UpdateUserReqDto } from '../dto/update-user-req.dto';
 import { RefreshTokenService } from './refresh-token.service';
-import { MailService } from 'src/mail/mail.service';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { UserCreatedEvent } from '../events/user-created.event';
 
 @Injectable()
 export class UserService {
   constructor(
     private readonly passwordService: PasswordService,
     private readonly refreshTokenService: RefreshTokenService,
-    // ! DEBUG: 메일 전송 테스트
-    private readonly mailService: MailService,
     private readonly userRepo: UserRepository,
+
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   async createUser(dto: CreateUserReqDto): Promise<CreateUserResDto> {
@@ -45,8 +46,12 @@ export class UserService {
       dto.password,
     );
 
-    // ! DEBUG: 메일 전송 테스트
-    this.mailService.sendWelcomeEmail(dto.email, dto.name);
+    // 유저 생성 이벤트
+    this.eventEmitter.emit(
+      'user.created',
+      new UserCreatedEvent(dto.email, dto.name),
+    );
+
     return await this.userRepo.createUser(dto, hashedPassword);
   }
 
