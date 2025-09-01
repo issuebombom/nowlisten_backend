@@ -19,7 +19,9 @@ import { SocialProvider } from 'src/common/types/social-provider.type';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Cache } from 'cache-manager';
 import { PasswordService } from './password.service';
-import { genId } from 'src/common/utils/gen-id';
+import { genId, genCryptoId } from 'src/common/utils/gen-id';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { AuthResetPasswordEvent } from '../events/auth-reset-password.event';
 
 export type JwtToken = {
   access: string;
@@ -43,6 +45,7 @@ export class AuthService {
 
     @Inject(CACHE_MANAGER)
     private readonly cacheManager: Cache,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   async login(dto: LoginReqDto): Promise<JwtToken> {
@@ -76,7 +79,7 @@ export class AuthService {
     // 유저 생성 또는 획득
     const user = await this.userService.createSocialUser(profile);
 
-    // 토큰 발행
+    // TODO: 토큰 발행을 지금할 필요가 있나?? 세션 검증 후 해도 되잖아
     const [accessPayload, refreshPayload] = await Promise.all([
       this.createJwtTokenPayload(user.id),
       this.createJwtTokenPayload(user.id),
@@ -88,14 +91,24 @@ export class AuthService {
     ]);
 
     // ! NOTE: 임시 토큰 생성 후 캐시 등록 (추후 레디스로 대체 필요)
+    // TODO: access, refresh를 굳이 레디스에 자리 차지하게 올릴 필요 없잖아
+    // - 보안 강화를 위해 crypto 쓰자
+    // - sessionId말고 tempToken이라 쓰자
     const sessionId = genId(16);
-    await this.cacheManager.set(sessionId, { access, refresh }, 5000);
+    await this.cacheManager.set(
+      `social-login:${sessionId}`,
+      { access, refresh },
+      5000,
+    );
 
     return sessionId;
   }
 
+  // TODO: sessionId말고 tempToken으로 쓰자
   async getAccessRefresh(sessionId: string) {
-    const value = await this.cacheManager.get<JwtToken>(sessionId);
+    const value = await this.cacheManager.get<JwtToken>(
+      `social-login:${sessionId}`,
+    );
     if (!value) {
       throw new BusinessException(
         ErrorDomain.Auth,
@@ -104,6 +117,8 @@ export class AuthService {
         HttpStatus.BAD_REQUEST,
       );
     }
+
+    // TODO: 검증 후 토큰 생성해도 되잖아
 
     // 캐시 삭제
     this.cacheManager.del(sessionId);
@@ -123,6 +138,25 @@ export class AuthService {
     const accessPayload = this.createJwtTokenPayload(user.userId);
     const access = this.createAccessToken(accessPayload);
     return { access };
+  }
+
+  async forgotPassword(email: string): Promise<void> {
+    // 유저 조회
+    const user = await this.userService.getUserByEmail(email);
+    // 토큰 생성
+    const tempToken = genCryptoId();
+    // 메모리 저장
+    await this.cacheManager.set(
+      `reset-password:${tempToken}`,
+      user.id,
+      5 * 60 * 1000,
+    ); // 5분
+
+    // 이벤트 발행
+    this.eventEmitter.emit(
+      'auth.reset-password',
+      new AuthResetPasswordEvent(tempToken, user.email, user.name),
+    );
   }
 
   logout(jti: string): void {

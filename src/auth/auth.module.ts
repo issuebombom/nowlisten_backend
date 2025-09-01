@@ -21,6 +21,7 @@ import { GoogleStrategy } from './strategies/google.strategy';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { GoogleAuthGuard } from './guards/google-auth.guard';
 import { UserListener } from './listeners/user.listener';
+import { AuthListener } from './listeners/auth.listener';
 
 @Module({
   imports: [
@@ -66,6 +67,7 @@ import { UserListener } from './listeners/user.listener';
     RefreshTokenRepository,
 
     UserListener,
+    AuthListener,
   ],
   exports: [UserService],
 })
