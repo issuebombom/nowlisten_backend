@@ -10,12 +10,15 @@ import { SocialProvider } from 'src/common/types/social-provider.type';
 import { PasswordService } from './password.service';
 import { UpdateUserReqDto } from '../dto/update-user-req.dto';
 import { RefreshTokenService } from './refresh-token.service';
+import { MailService } from 'src/mail/mail.service';
 
 @Injectable()
 export class UserService {
   constructor(
     private readonly passwordService: PasswordService,
     private readonly refreshTokenService: RefreshTokenService,
+    // ! DEBUG: 메일 전송 테스트
+    private readonly mailService: MailService,
     private readonly userRepo: UserRepository,
   ) {}
 
@@ -42,6 +45,8 @@ export class UserService {
       dto.password,
     );
 
+    // ! DEBUG: 메일 전송 테스트
+    this.mailService.sendWelcomeEmail(dto.email, dto.name);
     return await this.userRepo.createUser(dto, hashedPassword);
   }
 

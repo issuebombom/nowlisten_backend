@@ -7,6 +7,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { addTransactionalDataSource } from 'typeorm-transactional';
 import { DataSource } from 'typeorm';
 import { WorkspaceModule } from './workspace/workspace.module';
+import { MailModule } from './mail/mail.module';
 
 @Module({
   imports: [
@@ -40,6 +41,7 @@ import { WorkspaceModule } from './workspace/workspace.module';
 
     AuthModule,
     WorkspaceModule,
+    MailModule,
   ],
   controllers: [],
   providers: [],

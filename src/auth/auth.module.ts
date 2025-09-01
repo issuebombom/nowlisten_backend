@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
-import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { JwtModule } from '@nestjs/jwt';
+import { MailModule } from 'src/mail/mail.module';
 import { PassportModule } from '@nestjs/passport';
 import { CacheModule } from '@nestjs/cache-manager';
 import { HttpModule } from '@nestjs/axios';
@@ -11,8 +12,8 @@ import { AuthController } from './controllers/auth.controller';
 import { UserController } from './controllers/user.controller';
 import { AuthService } from './services/auth.service';
 import { UserService } from './services/user.service';
-import { RefreshTokenService } from './services/refresh-token.service';
 import { PasswordService } from './services/password.service';
+import { RefreshTokenService } from './services/refresh-token.service';
 import { UserRepository } from './repositories/user.repository';
 import { RefreshTokenRepository } from './repositories/refresh-token.repository';
 import { JwtStrategy } from './strategies/jwt.strategy';
@@ -46,6 +47,7 @@ import { GoogleAuthGuard } from './guards/google-auth.guard';
       timeout: 5000,
       maxRedirects: 5,
     }),
+    MailModule, // ! DEBUG 메일 전송 테스트
   ],
   controllers: [AuthController, UserController],
   providers: [
