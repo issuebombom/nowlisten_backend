@@ -8,7 +8,7 @@ export class LoginReqDto {
 
   @IsNotEmpty()
   @IsString()
-  @Length(8, 100)
+  @Length(8, 255)
   @IsPassword()
   password: string;
 }
