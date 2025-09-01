@@ -8,7 +8,7 @@ export class PasswordService {
   async hashedPassword(plain: string): Promise<string> {
     return await argon2.hash(plain, { type: argon2.argon2id });
   }
-  async comparePassword(plain: string, hashed: string): Promise<void> {
+  async varifyPassword(plain: string, hashed: string): Promise<void> {
     const verified = await argon2.verify(hashed, plain);
     if (!verified) {
       throw new BusinessException(
@@ -18,6 +18,17 @@ export class PasswordService {
         HttpStatus.UNAUTHORIZED,
       );
     }
-    console.log(verified);
+  }
+
+  async isSamePassword(plain: string, hashed: string): Promise<void> {
+    const verified = await argon2.verify(hashed, plain);
+    if (verified) {
+      throw new BusinessException(
+        ErrorDomain.Auth,
+        'New password cannot be the same as the old password.',
+        'New password cannot be the same as the old password.',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
   }
 }

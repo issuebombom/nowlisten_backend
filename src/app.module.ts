@@ -4,6 +4,11 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { SnakeNamingStrategy } from 'typeorm-naming-strategies';
 import { AuthModule } from './auth/auth.module';
 import { ScheduleModule } from '@nestjs/schedule';
+import { addTransactionalDataSource } from 'typeorm-transactional';
+import { DataSource } from 'typeorm';
+import { WorkspaceModule } from './workspace/workspace.module';
+import { MailModule } from './mail/mail.module';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 
 @Module({
   imports: [
@@ -26,10 +31,20 @@ import { ScheduleModule } from '@nestjs/schedule';
         synchronize: true, // 개발 환경에서만 true로 설정
         logging: true, // 개발 환경에서만 true로 설정
       }),
+      async dataSourceFactory(options) {
+        if (!options) {
+          throw new Error('Invalid options passed');
+        }
+        return addTransactionalDataSource(new DataSource(options));
+      },
     }),
+    EventEmitterModule.forRoot({ wildcard: false, maxListeners: 10 }),
+
     ScheduleModule.forRoot(),
 
     AuthModule,
+    WorkspaceModule,
+    MailModule,
   ],
   controllers: [],
   providers: [],

@@ -9,12 +9,11 @@ export class CreateUserReqDto {
 
   @IsEmail()
   @IsNotEmpty()
-  @Length(1, 50)
   email: string;
 
   @IsNotEmpty()
   @IsString()
-  @Length(8, 100)
+  @Length(8, 255)
   @IsPassword()
   password: string;
 

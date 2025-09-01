@@ -1,5 +1,6 @@
 import { HttpStatus } from '@nestjs/common';
 import { ErrorDomain } from 'src/common/types/error-domain.type';
+import { genId } from 'src/common/utils/gen-id';
 
 export class BusinessException extends Error {
   public readonly id: string;
@@ -10,18 +11,10 @@ export class BusinessException extends Error {
     public readonly message: string, // 내부 로깅용 메시지
     public readonly apiMessage: string, // api용 메시지
     public readonly status: HttpStatus,
-    public readonly details?: string[], // ex) validation error
+    public readonly context?: string[], // ex) validation error
   ) {
     super(message);
-    this.id = BusinessException.genId();
+    this.id = genId(12);
     this.timestamp = new Date();
-  }
-
-  private static genId(length = 12): string {
-    const p = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    return [...Array(length)].reduce(
-      (a) => a + p[Math.floor(Math.random() * p.length)],
-      '',
-    );
   }
 }

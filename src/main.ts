@@ -9,8 +9,10 @@ import { ConfigService } from '@nestjs/config';
 import { setSwagger } from './app.swagger';
 import { BusinessExceptionFilter } from './exception/business-exception.filter';
 import { ClassSerializerInterceptor } from '@nestjs/common';
+import { initializeTransactionalContext } from 'typeorm-transactional';
 
 async function bootstrap() {
+  initializeTransactionalContext();
   const app = await NestFactory.create(AppModule, getNestOptions()); // winston 로깅 옵션 추가
 
   const configService = app.get(ConfigService);

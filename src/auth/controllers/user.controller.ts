@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  HttpCode,
   HttpStatus,
   Patch,
   Put,
@@ -17,6 +18,7 @@ import { IJwtUserProfile } from '../interfaces/auth-guard-user.interface';
 import { ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { UpdateUserReqDto } from '../dto/update-user-req.dto';
 import { GetUserResDto } from '../dto/get-user-res.dto';
+import { DeleteUserReqDto } from '../dto/delete-user-req.dto';
 
 @Controller('users')
 export class UserController {
@@ -45,6 +47,7 @@ export class UserController {
   @Put('me')
   @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: '프로필 내용 수정' })
+  @HttpCode(HttpStatus.NO_CONTENT)
   @ApiResponse({
     status: HttpStatus.NO_CONTENT,
     description: '프로필 수정 완료',
@@ -59,6 +62,7 @@ export class UserController {
   @Patch('me/password')
   @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: '패스워드 변경' })
+  @HttpCode(HttpStatus.NO_CONTENT)
   @ApiResponse({
     status: HttpStatus.NO_CONTENT,
     description: '패스워드 변경 완료',
@@ -79,11 +83,15 @@ export class UserController {
   @Delete('me')
   @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: '유저 삭제' })
+  @HttpCode(HttpStatus.NO_CONTENT)
   @ApiResponse({
     status: HttpStatus.NO_CONTENT,
     description: '유저 삭제 완료',
   })
-  deleteUser(@AuthUser() user: IJwtUserProfile): void {
-    this.userService.deleteUser(user.userId);
+  async deleteUser(
+    @AuthUser() user: IJwtUserProfile,
+    @Body() deleteUserReqDto: DeleteUserReqDto,
+  ): Promise<void> {
+    await this.userService.deleteUser(user.userId, deleteUserReqDto.password);
   }
 }

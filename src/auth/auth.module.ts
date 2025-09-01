@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
-import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { JwtModule } from '@nestjs/jwt';
+import { MailModule } from 'src/mail/mail.module';
 import { PassportModule } from '@nestjs/passport';
 import { CacheModule } from '@nestjs/cache-manager';
 import { HttpModule } from '@nestjs/axios';
@@ -11,14 +12,16 @@ import { AuthController } from './controllers/auth.controller';
 import { UserController } from './controllers/user.controller';
 import { AuthService } from './services/auth.service';
 import { UserService } from './services/user.service';
-import { RefreshTokenService } from './services/refresh-token.service';
 import { PasswordService } from './services/password.service';
+import { RefreshTokenService } from './services/refresh-token.service';
 import { UserRepository } from './repositories/user.repository';
 import { RefreshTokenRepository } from './repositories/refresh-token.repository';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { GoogleStrategy } from './strategies/google.strategy';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { GoogleAuthGuard } from './guards/google-auth.guard';
+import { UserListener } from './listeners/user.listener';
+import { AuthListener } from './listeners/auth.listener';
 
 @Module({
   imports: [
@@ -46,6 +49,7 @@ import { GoogleAuthGuard } from './guards/google-auth.guard';
       timeout: 5000,
       maxRedirects: 5,
     }),
+    MailModule,
   ],
   controllers: [AuthController, UserController],
   providers: [
@@ -61,7 +65,10 @@ import { GoogleAuthGuard } from './guards/google-auth.guard';
 
     UserRepository,
     RefreshTokenRepository,
+
+    UserListener,
+    AuthListener,
   ],
-  exports: [],
+  exports: [UserService],
 })
 export class AuthModule {}
