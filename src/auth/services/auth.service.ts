@@ -22,6 +22,7 @@ import { PasswordService } from './password.service';
 import { genId, genCryptoId } from 'src/common/utils/gen-id';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { AuthResetPasswordEvent } from '../events/auth-reset-password.event';
+import { UserRepository } from '../repositories/user.repository';
 
 export type JwtToken = {
   access: string;
@@ -43,6 +44,8 @@ export class AuthService {
     private readonly passwordService: PasswordService,
     private readonly refreshTokenService: RefreshTokenService,
 
+    private readonly userRepo: UserRepository,
+
     @Inject(CACHE_MANAGER)
     private readonly cacheManager: Cache,
     private readonly eventEmitter: EventEmitter2,
@@ -60,7 +63,7 @@ export class AuthService {
       );
     }
 
-    await this.passwordService.comparePassword(dto.password, user.password);
+    await this.passwordService.varifyPassword(dto.password, user.password);
 
     const [accessPayload, refreshPayload] = await Promise.all([
       this.createJwtTokenPayload(user.id),
@@ -157,6 +160,35 @@ export class AuthService {
       'auth.reset-password',
       new AuthResetPasswordEvent(tempToken, user.email, user.name),
     );
+  }
+
+  async resetPassword(token: string, plainPassword: string): Promise<void> {
+    const userId = await this.cacheManager.get<string>(
+      `reset-password:${token}`,
+    );
+
+    if (!userId) {
+      throw new BusinessException(
+        ErrorDomain.Auth,
+        `token ${token} has expired`,
+        `token has expired`,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    // 유저 검증
+    const user = await this.userService.getUserByIdWithPassword(userId);
+
+    // 동일 패스워드 검증
+    await this.passwordService.isSamePassword(plainPassword, user.password);
+
+    // 패스워드 변경
+    const hashedPassword =
+      await this.passwordService.hashedPassword(plainPassword);
+    await this.userRepo.updatePassword(userId, hashedPassword);
+
+    // 메모리 삭제
+    this.cacheManager.del(`reset-password:${token}`);
   }
 
   logout(jti: string): void {

@@ -114,16 +114,27 @@ export class UserService {
     return user;
   }
 
+  async getUserByIdWithPassword(id: string): Promise<User> {
+    const user = await this.userRepo.findUserByIdWithPassword(id);
+    if (!user) {
+      throw new BusinessException(
+        ErrorDomain.User,
+        `user not exists: ${id}`,
+        `ID '${id}' not exists`,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    return user;
+  }
+
   // !NOTE: 배포 단계에서는 사용 금지
   async getUsers(): Promise<User[]> {
     return await this.userRepo.findUsers();
   }
 
-  async updateMyProfile(
-    id: string,
-    updateProfile: UpdateUserReqDto,
-  ): Promise<void> {
-    await this.userRepo.updateUser(id, updateProfile);
+  async updateMyProfile(id: string, updateProfile: UpdateUserReqDto) {
+    const result = await this.userRepo.updateUser(id, updateProfile);
+    return result;
   }
 
   async changePassword(
@@ -131,17 +142,14 @@ export class UserService {
     currentPassword: string,
     newPassword: string,
   ): Promise<void> {
-    /**
-     * 구현 내역
-     * 해당 회원이 존재하는지 확인 (가드에서 이미 검증)
-     * 회원 정보에서 패스워드 획득
-     * 기존 패스워드에 대한 검증 필요
-     * 새 패스워드 해시화
-     * 패드워드 변경 적용
-     */
+    const user = await this.userRepo.findUserByIdWithPassword(id);
 
-    const user = await this.userRepo.findUserById(id);
-    await this.passwordService.comparePassword(currentPassword, user.password);
+    // varify
+    await this.passwordService.varifyPassword(currentPassword, user.password);
+
+    // check same
+    await this.passwordService.isSamePassword(newPassword, user.password);
+
     const newHashedPassword =
       await this.passwordService.hashedPassword(newPassword);
     await this.userRepo.updatePassword(id, newHashedPassword);
@@ -149,7 +157,7 @@ export class UserService {
 
   async deleteUser(id: string, password: string): Promise<void> {
     const user = await this.userRepo.findUserByIdWithPassword(id);
-    await this.passwordService.comparePassword(password, user.password);
+    await this.passwordService.varifyPassword(password, user.password);
     this.refreshTokenService.revokeAllRefreshTokens(user.id);
     this.userRepo.deleteUser(id);
   }

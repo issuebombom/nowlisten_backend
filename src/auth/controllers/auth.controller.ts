@@ -36,6 +36,7 @@ import { catchError, firstValueFrom, map } from 'rxjs';
 import { GetTokenReqDto } from '../dto/get-token-req.dto';
 import { ForgotPasswordReqDto } from '../dto/forget-password-req.dto';
 import { ConfigService } from '@nestjs/config';
+import { ResetPasswordReqDto } from '../dto/reset-password-req.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -189,5 +190,21 @@ export class AuthController {
     @Body() forgotPasswordReqDto: ForgotPasswordReqDto,
   ): Promise<void> {
     await this.authService.forgotPassword(forgotPasswordReqDto.email);
+  }
+
+  @Post('reset-password')
+  @ApiOperation({ summary: '비밀번호 재설정' })
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiResponse({
+    status: HttpStatus.NO_CONTENT,
+    description: '비밀번호 재설정 완료',
+  })
+  async resetPassword(
+    @Body() resetPasswordReqDto: ResetPasswordReqDto,
+  ): Promise<void> {
+    await this.authService.resetPassword(
+      resetPasswordReqDto.token,
+      resetPasswordReqDto.newPassword,
+    );
   }
 }
