@@ -28,8 +28,8 @@ export class BusinessExceptionFilter implements ExceptionFilter {
         domain: exception.domain,
         message: exception.message,
         apiMessage: exception.apiMessage,
-        details: exception.details,
         status: exception.status,
+        context: exception.context,
         timestamp: exception.timestamp,
       };
     } else if (exception instanceof HttpException) {
@@ -44,8 +44,8 @@ export class BusinessExceptionFilter implements ExceptionFilter {
       status = HttpStatus.INTERNAL_SERVER_ERROR;
       errorResponseBody = new BusinessException(
         ErrorDomain.Generic,
-        `Internal server error: ${exception.message}`,
-        'Internal server error',
+        `Internal server error`,
+        `Internal server error`,
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
@@ -64,6 +64,7 @@ export class BusinessExceptionFilter implements ExceptionFilter {
         null,
         2,
       )}`,
+      exception.stack,
     );
 
     // client response (message 제외)
