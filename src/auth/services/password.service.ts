@@ -18,6 +18,5 @@ export class PasswordService {
         HttpStatus.UNAUTHORIZED,
       );
     }
-    console.log(verified);
   }
 }
