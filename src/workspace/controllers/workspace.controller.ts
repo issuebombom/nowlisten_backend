@@ -19,6 +19,7 @@ export class WorkspaceController {
     @Body()
     createWorkspaceReqDto: CreateWorkspaceReqDto,
   ): Promise<Workspace> {
+    // ! NOTE: 리턴값 어떻게? 전체 또는 slug(id)? 우선은 ws 전체 리턴
     const { workspaceName, userNickname } = createWorkspaceReqDto;
     return this.workspaceService.createWorkspace(
       workspaceName,
