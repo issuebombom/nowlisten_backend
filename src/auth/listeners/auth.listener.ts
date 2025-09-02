@@ -11,6 +11,7 @@ export class AuthListener {
   async handleUserCreatedEvent(payload: AuthResetPasswordEvent) {
     // 메일 발송
     await this.mailService.sendResetPasswordEmail(
+      payload.namespace,
       payload.token,
       payload.email,
       payload.username,

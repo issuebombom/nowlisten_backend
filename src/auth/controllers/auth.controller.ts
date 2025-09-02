@@ -37,6 +37,7 @@ import { GetTokenReqDto } from '../dto/get-token-req.dto';
 import { ForgotPasswordReqDto } from '../dto/forget-password-req.dto';
 import { ConfigService } from '@nestjs/config';
 import { ResetPasswordReqDto } from '../dto/reset-password-req.dto';
+import { VerifyTempTokenReqDto } from '../dto/verify-temp-token-req.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -76,39 +77,39 @@ export class AuthController {
   }
 
   @Get('google')
-  @ApiOperation({ summary: '소셜 로그인 페이지 연동' })
   @UseGuards(GoogleAuthGuard)
+  @ApiOperation({ summary: '소셜 로그인 페이지 연동' })
   async googleAuth() {}
 
   @Get('google/callback')
+  @UseGuards(GoogleAuthGuard)
   @ApiOperation({ summary: '구글 oauth2.0 callback' })
   @HttpCode(HttpStatus.FOUND)
   @ApiResponse({
     status: HttpStatus.FOUND,
     description: '프론트엔드 callback으로 리다이렉트 with querystring(code)',
   })
-  @UseGuards(GoogleAuthGuard)
   async googleAuthCallback(
     @AuthUser() user: ISocialUserProfile,
     @Res() res: Response,
   ) {
-    // TODO: sessionId말고 tempToken으로 하자
-    const sessionId = await this.authService.googleLogin(user);
-
-    // ! TEST: 프론트 리다이렉트 (추후 수정)
-    // TODO: code 말고 token이라 쓰자 / 프론트 콜백 링크 env로 옮기자
-    res.redirect(
-      `http://localhost:3001/api/v1/auth/callback?code=${sessionId}`,
+    const redirectUrl = this.configService.get<string>(
+      'FRONT_SOCIAL_LOGIN_REDIRECT',
     );
+    const { namespace, tempToken } = await this.authService.googleLogin(user);
+
+    res.redirect(`${redirectUrl}?ns=${namespace}&code=${tempToken}`);
   }
 
   // ! TEST: 프론트엔드라고 가정한 테스트 엔드포인트 (추후 삭제)
-  // TODO: 엔드포인트 token 말고 다른거 쓰자 (ex. social-login)
   @Get('callback')
   @ApiExcludeEndpoint()
-  async testGetToken(@Query('code') sessionId: string, @Res() res: Response) {
-    const apiUrl = 'http://localhost:3001/api/v1/auth/token';
-    const requestBody = { sessionId };
+  async testGetToken(
+    @Query() query: { ns: string; code: string },
+    @Res() res: Response,
+  ) {
+    const apiUrl = 'http://localhost:3001/api/v1/auth/social-login/token';
+    const requestBody = { namespace: query.ns, token: query.code };
     const requestConfig = {
       headers: { 'Content-Type': 'application/json' },
     };
@@ -127,8 +128,7 @@ export class AuthController {
   }
 
   // 프론트에서 임시 토큰 전달 시 jwt 응답
-  // TODO: 엔드포인트 이름 token 말고 social-login 같은거로 변경
-  @Post('token')
+  @Post('social-login/token')
   @ApiOperation({ summary: '소셜 로그인 후 jwt 발급' })
   @ApiResponse({
     status: HttpStatus.CREATED,
@@ -137,8 +137,8 @@ export class AuthController {
   async getAccessRefresh(
     @Body() getTokenReqDto: GetTokenReqDto,
   ): Promise<JwtToken> {
-    const { sessionId } = getTokenReqDto;
-    return await this.authService.getAccessRefresh(sessionId);
+    const { namespace, token } = getTokenReqDto;
+    return await this.authService.getAccessRefresh(namespace, token);
   }
 
   @Post('logout')
@@ -190,6 +190,22 @@ export class AuthController {
     @Body() forgotPasswordReqDto: ForgotPasswordReqDto,
   ): Promise<void> {
     await this.authService.forgotPassword(forgotPasswordReqDto.email);
+  }
+
+  @Post('verify-token')
+  @ApiOperation({ summary: '임시 토큰 검증' })
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiResponse({
+    status: HttpStatus.NO_CONTENT,
+    description: '토큰 검증 완료',
+  })
+
+  // ! NOTE: 비밀번호 재설정 링크 접속 시 해당 링크가 유효한지 토큰으로 검증
+  async verifyTempToken(@Body() verifyTempTokenReqDto: VerifyTempTokenReqDto) {
+    await this.authService.verifyTempToken(
+      verifyTempTokenReqDto.namespace,
+      verifyTempTokenReqDto.token,
+    );
   }
 
   @Post('reset-password')
