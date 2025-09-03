@@ -47,7 +47,7 @@ export class UserService {
     );
 
     // 유저 생성 이벤트
-    this.eventEmitter.emit(
+    this.eventEmitter.emitAsync(
       'user.created',
       new UserCreatedEvent(dto.email, dto.name),
     );

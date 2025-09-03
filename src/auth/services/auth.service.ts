@@ -149,7 +149,7 @@ export class AuthService {
     ); // 5분
 
     // 이벤트 발행
-    this.eventEmitter.emit(
+    this.eventEmitter.emitAsync(
       'auth.reset-password',
       new AuthResetPasswordEvent(namespace, tempToken, user.email, user.name),
     );
@@ -168,6 +168,7 @@ export class AuthService {
     const user = await this.userService.getUserByIdWithPassword(userId);
 
     // 동일 패스워드 검증
+    // TODO: 패스워드 재설정 (사실상 초기화)인데 굳이 이전값과 동일함을 점검할 필요가 있을까?
     await this.passwordService.isSamePassword(plainPassword, user.password);
 
     // 패스워드 변경
