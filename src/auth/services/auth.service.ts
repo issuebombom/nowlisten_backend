@@ -19,7 +19,7 @@ import { SocialProvider } from 'src/common/types/social-provider.type';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Cache } from 'cache-manager';
 import { PasswordService } from './password.service';
-import { genCryptoId } from 'src/common/utils/gen-id';
+import { genCryptoId } from 'src/common/utils/gen-id.util';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { AuthResetPasswordEvent } from '../events/auth-reset-password.event';
 import { UserRepository } from '../repositories/user.repository';
