@@ -9,6 +9,7 @@ import { DataSource } from 'typeorm';
 import { WorkspaceModule } from './workspace/workspace.module';
 import { MailModule } from './mail/mail.module';
 import { EventEmitterModule } from '@nestjs/event-emitter';
+import { CustomQueryLogger } from './app.options';
 
 @Module({
   imports: [
@@ -28,8 +29,13 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
         database: configService.get<string>('DB_DATABASE'),
         autoLoadEntities: true,
         namingStrategy: new SnakeNamingStrategy(),
-        synchronize: true, // 개발 환경에서만 true로 설정
-        logging: true, // 개발 환경에서만 true로 설정
+        synchronize: configService.get<string>('ENV') !== 'prod',
+        logging:
+          configService.get<string>('ENV') !== 'prod'
+            ? ['query', 'error', 'warn']
+            : false,
+        logger: new CustomQueryLogger(),
+        maxQueryExecutionTime: 100,
       }),
       async dataSourceFactory(options) {
         if (!options) {
