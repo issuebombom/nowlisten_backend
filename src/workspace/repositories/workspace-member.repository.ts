@@ -43,7 +43,7 @@ export class WorkspaceMemberRepository {
           workspace AS ws ON wm.workspace_id = ws.id
        WHERE 
           wm.user_id = $1
-       ORDER BY ws.created_at DESC
+       ORDER BY wm.joined_at DESC
        `,
       [userId],
     );
