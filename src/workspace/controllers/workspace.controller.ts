@@ -1,11 +1,12 @@
-import { Body, Controller, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { CreateWorkspaceReqDto } from '../dto/create-workspace-req.dto';
-import { ApiOperation } from '@nestjs/swagger';
+import { ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { WorkspaceService } from '../services/workspace.service';
 import { Workspace } from '../entities/workspace.entity';
 import { AuthUser } from 'src/auth/decorators/auth-user.decorator';
 import { IJwtUserProfile } from 'src/auth/interfaces/auth-guard-user.interface';
+import { GetWorkspaceResDto } from '../dto/get-workspace-res.dto';
 
 @Controller('ws')
 export class WorkspaceController {
@@ -26,5 +27,17 @@ export class WorkspaceController {
       userNickname,
       user.userId,
     );
+  }
+
+  @Get('me')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: '내 워크스페이스 조회' })
+  @ApiResponse({
+    description: '워크스페이스 조회 완료',
+  })
+  async getMyWorkspaces(
+    @AuthUser() user: IJwtUserProfile,
+  ): Promise<GetWorkspaceResDto[]> {
+    return await this.workspaceService.getMyWorkspaces(user.userId);
   }
 }

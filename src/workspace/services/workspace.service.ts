@@ -4,8 +4,9 @@ import { WorkspaceMemberRepository } from '../repositories/workspace-member.repo
 import { Transactional } from 'typeorm-transactional';
 import { WorkspaceRole } from 'src/common/types/workspace-role.type';
 import { UserService } from 'src/auth/services/user.service';
-import { genId } from 'src/common/utils/gen-id';
+import { genId } from 'src/common/utils/gen-id.util';
 import { MemberStatus } from 'src/common/types/member-status.type';
+import { GetWorkspaceResDto } from '../dto/get-workspace-res.dto';
 
 @Injectable()
 export class WorkspaceService {
@@ -45,6 +46,21 @@ export class WorkspaceService {
     );
 
     return workspace;
+  }
+
+  /**
+   * TODO: 워크스페이스 조회
+   * - 유저 id로 워크스페이스 맴버 조회(status: active)
+   * - 비활성화된 워크스페이스(isActive) false는 제외 / OWNER의 경우 노출 (프론트 필요)
+   * - 최근 생성일로 정렬(쿼리에서진행, 유저에게 선택권 없음)
+   */
+  async getMyWorkspaces(userId: string): Promise<GetWorkspaceResDto[]> {
+    const workspaces =
+      await this.workspaceMemberRepo.getWorkspaceByUserId(userId);
+
+    return workspaces.filter(
+      (ws) => ws.isActive || ws.memberRole === WorkspaceRole.OWNER,
+    );
   }
 
   private createSlug(workspaceName: string) {
