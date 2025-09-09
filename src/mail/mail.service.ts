@@ -3,7 +3,6 @@ import { ConfigService } from '@nestjs/config';
 import { readFile } from 'fs/promises';
 import { Transporter } from 'nodemailer';
 import { join } from 'path';
-import { RedisNamespace } from 'src/redis/redis-keys';
 
 const MAIL_TEMPLATES_DIR = join(process.cwd(), 'src', 'mail', 'templates');
 
@@ -31,12 +30,7 @@ export class MailService {
     });
   }
 
-  async sendResetPasswordEmail(
-    namespace: RedisNamespace,
-    token: string,
-    email: string,
-    username: string,
-  ) {
+  async sendResetPasswordEmail(token: string, email: string, username: string) {
     const html = await this.getTemplate('reset-password.html');
     const resetPasswordUrl = this.configService.get<string>(
       'FRONT_RESET_PASSWORD_URL',
@@ -47,10 +41,19 @@ export class MailService {
       subject: `${username}님, 비밀번호 재설정을 위한 링크 안내드립니다.`,
       html: html
         .replaceAll('{{username}}', username)
-        .replaceAll(
-          '{{resetLink}}',
-          `${resetPasswordUrl}?ns=${namespace}&token=${token}`,
-        )
+        .replaceAll('{{resetLink}}', `${resetPasswordUrl}?token=${token}`)
+        .replaceAll('{{companyName}}', this.PUBLIC_SERVICE_NAME),
+    });
+  }
+
+  async sendVerificationCodeEmail(email: string, code: string) {
+    const html = await this.getTemplate('Verification-code.html');
+    await this.transporter.sendMail({
+      from: `"${this.PUBLIC_SERVICE_NAME}" <no-reply@${this.DOMAIN_NAME}>`,
+      to: email,
+      subject: `${this.PUBLIC_SERVICE_NAME} 확인 코드: ${code}`,
+      html: html
+        .replaceAll('{{code}}', code)
         .replaceAll('{{companyName}}', this.PUBLIC_SERVICE_NAME),
     });
   }

@@ -1,12 +1,11 @@
-import { IsNotEmpty, IsString } from 'class-validator';
-import { RedisNamespace } from 'src/redis/redis-keys';
+import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
 export class VerifyTempTokenReqDto {
   @IsNotEmpty()
   @IsString()
-  namespace: RedisNamespace;
-
-  @IsNotEmpty()
-  @IsString()
   token: string;
+
+  @IsString()
+  @IsOptional()
+  compareValue?: string;
 }

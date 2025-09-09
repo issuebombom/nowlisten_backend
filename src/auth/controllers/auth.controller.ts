@@ -38,6 +38,9 @@ import { ForgotPasswordReqDto } from '../dto/forget-password-req.dto';
 import { ConfigService } from '@nestjs/config';
 import { ResetPasswordReqDto } from '../dto/reset-password-req.dto';
 import { VerifyTempTokenReqDto } from '../dto/verify-temp-token-req.dto';
+import { SendVerificationEmailReqDto } from '../dto/send-verification-email-req.dto';
+import { ConfirmVerificationEmailReqDto } from '../dto/confirm-verification-email-req.dto';
+import { RedisNamespace } from 'src/redis/redis-keys';
 
 @Controller('auth')
 export class AuthController {
@@ -63,6 +66,31 @@ export class AuthController {
     return new CreateUserResDto(
       await this.userService.createUser(createUserReqDto),
     );
+  }
+
+  @Post('email/verification')
+  @ApiOperation({ summary: '인증 메일 발송' })
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiResponse({
+    status: HttpStatus.NO_CONTENT,
+    description: '인증 메일 발송 완료',
+  })
+  async sendVerificationEmail(
+    @Body() dto: SendVerificationEmailReqDto,
+  ): Promise<void> {
+    await this.authService.sendVerificationEmail(dto.email);
+  }
+
+  @Post('email/verification/confirm')
+  @ApiOperation({ summary: '인증 번호 확인' })
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiResponse({
+    status: HttpStatus.NO_CONTENT,
+    description: '인증 번호 확인 완료',
+  })
+  async confirmVerificationEmail(@Body() dto: ConfirmVerificationEmailReqDto) {
+    const redisNamespace = RedisNamespace.EMAIL_VERIFY;
+    await this.authService.verifyTempToken(redisNamespace, dto.email, dto.code);
   }
 
   @Post('login')
@@ -96,20 +124,17 @@ export class AuthController {
     const redirectUrl = this.configService.get<string>(
       'FRONT_SOCIAL_LOGIN_REDIRECT',
     );
-    const { namespace, tempToken } = await this.authService.googleLogin(user);
+    const tempToken = await this.authService.googleLogin(user);
 
-    res.redirect(`${redirectUrl}?ns=${namespace}&code=${tempToken}`);
+    res.redirect(`${redirectUrl}?code=${tempToken}`);
   }
 
   // ! TEST: 프론트엔드라고 가정한 테스트 엔드포인트 (추후 삭제)
   @Get('callback')
   @ApiExcludeEndpoint()
-  async testGetToken(
-    @Query() query: { ns: string; code: string },
-    @Res() res: Response,
-  ) {
+  async testGetToken(@Query() query: { code: string }, @Res() res: Response) {
     const apiUrl = 'http://localhost:3001/api/v1/auth/social-login/token';
-    const requestBody = { namespace: query.ns, token: query.code };
+    const requestBody = { token: query.code };
     const requestConfig = {
       headers: { 'Content-Type': 'application/json' },
     };
@@ -137,8 +162,11 @@ export class AuthController {
   async getAccessRefresh(
     @Body() getTokenReqDto: GetTokenReqDto,
   ): Promise<JwtToken> {
-    const { namespace, token } = getTokenReqDto;
-    return await this.authService.getAccessRefresh(namespace, token);
+    const redisNamespace = RedisNamespace.SOCIAL_LOGIN;
+    return await this.authService.getAccessRefresh(
+      redisNamespace,
+      getTokenReqDto.token,
+    );
   }
 
   @Post('logout')
@@ -192,20 +220,17 @@ export class AuthController {
     await this.authService.forgotPassword(forgotPasswordReqDto.email);
   }
 
-  @Post('verify-token')
+  @Post('reset-password/verification')
   @ApiOperation({ summary: '임시 토큰 검증' })
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiResponse({
     status: HttpStatus.NO_CONTENT,
     description: '토큰 검증 완료',
   })
-
   // ! NOTE: 비밀번호 재설정 링크 접속 시 해당 링크가 유효한지 토큰으로 검증
-  async verifyTempToken(@Body() verifyTempTokenReqDto: VerifyTempTokenReqDto) {
-    await this.authService.verifyTempToken(
-      verifyTempTokenReqDto.namespace,
-      verifyTempTokenReqDto.token,
-    );
+  async resetPasswordPageVerification(@Body() dto: VerifyTempTokenReqDto) {
+    const redisNamespace = RedisNamespace.PASSWORD_RESET;
+    await this.authService.verifyTempToken(redisNamespace, dto.token);
   }
 
   @Post('reset-password')

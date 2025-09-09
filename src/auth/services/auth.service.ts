@@ -19,11 +19,13 @@ import { SocialProvider } from 'src/common/types/social-provider.type';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Cache } from 'cache-manager';
 import { PasswordService } from './password.service';
-import { genCryptoId } from 'src/common/utils/gen-id.util';
+import { genCryptoId, genId } from 'src/common/utils/gen-id.util';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { AuthResetPasswordEvent } from '../events/auth-reset-password.event';
+import { AuthResetPasswordEvent } from '../events/auth.reset-password.event';
 import { UserRepository } from '../repositories/user.repository';
-import { redisKey, RedisNamespace } from 'src/redis/redis-keys';
+import { joinRedisKey, RedisNamespace } from 'src/redis/redis-keys';
+import { AuthSendVerificationCodeEvent } from '../events/auth.send-verification-code.event';
+import { AuthMethod } from 'src/common/types/auth-method.type';
 
 export type JwtToken = {
   access: string;
@@ -51,6 +53,21 @@ export class AuthService {
     private readonly cacheManager: Cache,
     private readonly eventEmitter: EventEmitter2,
   ) {}
+
+  async sendVerificationEmail(email: string): Promise<void> {
+    await this.userService.ensureUserNotExists(email);
+    const tempCode = genId(6).toUpperCase();
+    await this.cacheManager.set(
+      joinRedisKey(RedisNamespace.EMAIL_VERIFY, email),
+      tempCode,
+      5 * 60 * 1000, // 5분
+    );
+
+    this.eventEmitter.emitAsync(
+      'auth.send-verification-code',
+      new AuthSendVerificationCodeEvent(AuthMethod.EMAIL, email, tempCode),
+    );
+  }
 
   async login(dto: LoginReqDto): Promise<JwtToken> {
     const user = await this.userService.getUserByEmailWithPassword(dto.email);
@@ -88,17 +105,17 @@ export class AuthService {
     // jwt 전달을 위한 임시토큰 생성
     const tempToken = genCryptoId();
     await this.cacheManager.set(
-      redisKey(namespace, tempToken),
+      joinRedisKey(namespace, tempToken),
       user.id,
       10 * 1000, // 10초
     );
 
-    return { namespace, tempToken };
+    return tempToken;
   }
 
   async getAccessRefresh(namespace: RedisNamespace, tempToken: string) {
-    const key = redisKey(namespace, tempToken);
-    const userId = await this.verifyRedisToken(key);
+    const key = joinRedisKey(namespace, tempToken);
+    const userId = await this.verifyRedisKey(key);
 
     // 유저 생성완료 및 존재 유무 확인
     const user = await this.userService.getUserById(userId);
@@ -114,7 +131,7 @@ export class AuthService {
     ]);
 
     // 캐시 삭제
-    this.cacheManager.del(tempToken);
+    this.cacheManager.del(key);
 
     return { access, refresh };
   }
@@ -138,12 +155,12 @@ export class AuthService {
     // 유저 조회
     const user = await this.userService.getUserByEmail(email);
     // 네임스페이스 지정
-    const namespace = RedisNamespace.RESET_PASSWORD;
+    const namespace = RedisNamespace.PASSWORD_RESET;
     // 토큰 생성
     const tempToken = genCryptoId();
     // 메모리 저장
     await this.cacheManager.set(
-      redisKey(namespace, tempToken),
+      joinRedisKey(namespace, tempToken),
       user.id,
       5 * 60 * 1000,
     ); // 5분
@@ -151,18 +168,25 @@ export class AuthService {
     // 이벤트 발행
     this.eventEmitter.emitAsync(
       'auth.reset-password',
-      new AuthResetPasswordEvent(namespace, tempToken, user.email, user.name),
+      new AuthResetPasswordEvent(tempToken, user.email, user.name),
     );
   }
 
-  async verifyTempToken(namespace: RedisNamespace, token: string) {
-    const key = redisKey(namespace, token);
-    await this.verifyRedisToken(key);
+  async verifyTempToken(
+    namespace: RedisNamespace,
+    subkeys: string | string[],
+    compareValue?: string,
+  ) {
+    const key = joinRedisKey(
+      namespace,
+      ...(Array.isArray(subkeys) ? subkeys : [subkeys]),
+    );
+    await this.verifyRedisKey(key, compareValue);
   }
 
   async resetPassword(token: string, plainPassword: string): Promise<void> {
-    const key = redisKey(RedisNamespace.RESET_PASSWORD, token);
-    const userId = await this.verifyRedisToken(key);
+    const key = joinRedisKey(RedisNamespace.PASSWORD_RESET, token);
+    const userId = await this.verifyRedisKey(key);
 
     // 유저 검증
     const user = await this.userService.getUserByIdWithPassword(userId);
@@ -177,7 +201,7 @@ export class AuthService {
     await this.userRepo.updatePassword(userId, hashedPassword);
 
     // 메모리 삭제
-    this.cacheManager.del(`reset-password:${token}`);
+    this.cacheManager.del(key);
   }
 
   logout(jti: string): void {
@@ -188,7 +212,7 @@ export class AuthService {
     this.refreshTokenService.revokeAllRefreshTokens(userId);
   }
 
-  private async verifyRedisToken(key: string) {
+  private async verifyRedisKey(key: string, compareValue?: string) {
     const value = await this.cacheManager.get<string>(key);
 
     if (!value) {
@@ -196,6 +220,15 @@ export class AuthService {
         ErrorDomain.Auth,
         `redis key ${key} has expired`,
         `token has expired`,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    if (compareValue && value !== compareValue) {
+      throw new BusinessException(
+        ErrorDomain.Auth,
+        `compare value "${compareValue}" mismatch`,
+        `invalid value`,
         HttpStatus.BAD_REQUEST,
       );
     }

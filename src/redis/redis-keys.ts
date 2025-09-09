@@ -1,11 +1,9 @@
 export enum RedisNamespace {
   SOCIAL_LOGIN = 'social-login',
-  RESET_PASSWORD = 'reset-password',
+  PASSWORD_RESET = 'password_reset',
+  EMAIL_VERIFY = 'email-verify',
 }
 
-export function redisKey(
-  ns: RedisNamespace,
-  ...parts: (string | number)[]
-): string {
+export function joinRedisKey(ns: RedisNamespace, ...parts: string[]): string {
   return [ns, ...parts].join(':');
 }
