@@ -16,4 +16,8 @@ export class WorkspaceRepository {
     workspace.slug = slug;
     return this.repo.save(workspace);
   }
+
+  findWorkspaceById(id: string): Promise<Workspace> {
+    return this.repo.findOneBy({ id });
+  }
 }

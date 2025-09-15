@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { readFile } from 'fs/promises';
 import { Transporter } from 'nodemailer';
 import { join } from 'path';
+import { formatDuration } from 'src/common/utils/format-duration.util';
 
 const MAIL_TEMPLATES_DIR = join(process.cwd(), 'src', 'mail', 'templates');
 
@@ -54,6 +55,34 @@ export class MailService {
       subject: `${this.PUBLIC_SERVICE_NAME} 확인 코드: ${code}`,
       html: html
         .replaceAll('{{code}}', code)
+        .replaceAll('{{companyName}}', this.PUBLIC_SERVICE_NAME),
+    });
+  }
+
+  async sendWorkspaceInvitationEmail(
+    email: string,
+    workspaceName: string,
+    inviterName: string,
+    token: string,
+  ) {
+    // 초대링크 생성 -> 프론트 지정 엔드포인트/토큰
+    const joinLink = join(
+      this.configService.get<string>('FRONT_WORKSPACE_JOIN_URL'),
+      token,
+    );
+    const expiry = this.configService.get<string>('INVITATION_EMAIL_EXPIRY');
+    const validityPeriod = formatDuration(expiry, 'KR');
+
+    const html = await this.getTemplate('workspace-invitation.html');
+    await this.transporter.sendMail({
+      from: `"${this.PUBLIC_SERVICE_NAME}" <no-reply@${this.DOMAIN_NAME}>`,
+      to: email,
+      subject: `${inviterName} 님이 ${this.PUBLIC_SERVICE_NAME}에서 함께 작업할 수 있도록 고객님을 초대했습니다.`,
+      html: html
+        .replaceAll('{{inviterName}}', inviterName)
+        .replaceAll('{{workspaceName}}', workspaceName)
+        .replaceAll('{{joinLink}}', joinLink)
+        .replaceAll('{{validityPeriod}}', validityPeriod)
         .replaceAll('{{companyName}}', this.PUBLIC_SERVICE_NAME),
     });
   }

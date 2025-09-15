@@ -1,6 +1,7 @@
 import { BaseEntity } from 'src/common/entities/base-entity';
 import { Column, Entity, OneToMany, Relation } from 'typeorm';
 import { WorkspaceMember } from './workspace-member.entity';
+import { WorkspaceInvitation } from './workspace-invitation.entity';
 
 @Entity()
 export class Workspace extends BaseEntity {
@@ -18,4 +19,7 @@ export class Workspace extends BaseEntity {
 
   @OneToMany(() => WorkspaceMember, (member) => member.workspace)
   workspaceMember: Relation<WorkspaceMember>;
+
+  @OneToMany(() => WorkspaceInvitation, (invitation) => invitation.workspace)
+  workspaceInvitation: Relation<WorkspaceInvitation>;
 }

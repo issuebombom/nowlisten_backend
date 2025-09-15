@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { HttpStatus, Injectable } from '@nestjs/common';
 import { WorkspaceRepository } from '../repositories/workspace.repository';
 import { WorkspaceMemberRepository } from '../repositories/workspace-member.repository';
 import { Transactional } from 'typeorm-transactional';
@@ -7,6 +7,9 @@ import { UserService } from 'src/auth/services/user.service';
 import { genId } from 'src/common/utils/gen-id.util';
 import { MemberStatus } from 'src/common/types/member-status.type';
 import { GetWorkspaceResDto } from '../dto/get-workspace-res.dto';
+import { BusinessException } from 'src/exception/business-exception';
+import { ErrorDomain } from 'src/common/types/error-domain.type';
+import { Workspace } from '../entities/workspace.entity';
 
 @Injectable()
 export class WorkspaceService {
@@ -56,11 +59,24 @@ export class WorkspaceService {
    */
   async getMyWorkspaces(userId: string): Promise<GetWorkspaceResDto[]> {
     const workspaces =
-      await this.workspaceMemberRepo.getWorkspaceByUserId(userId);
+      await this.workspaceMemberRepo.findWorkspaceByUserId(userId);
 
     return workspaces.filter(
       (ws) => ws.isActive || ws.memberRole === WorkspaceRole.OWNER,
     );
+  }
+
+  async getWorkspaceById(id: string): Promise<Workspace> {
+    const workspace = await this.workspaceRepo.findWorkspaceById(id);
+    if (!workspace) {
+      throw new BusinessException(
+        ErrorDomain.Workspace,
+        `workspace not exists: ${id}`,
+        `id ${id} not exists`,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    return workspace;
   }
 
   private createSlug(workspaceName: string) {

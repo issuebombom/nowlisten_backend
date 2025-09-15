@@ -33,7 +33,8 @@ export class WorkspaceMemberRepository {
     return this.repo.save(member);
   }
 
-  async getWorkspaceByUserId(userId: string): Promise<GetWorkspaceResDto[]> {
+  // ! NOTE: 이게 멤버 레포에 있어야 하나? (유저 id로 접근하니까 타당함?)
+  async findWorkspaceByUserId(userId: string): Promise<GetWorkspaceResDto[]> {
     const rows = await this.repo.query(
       `SELECT 
           ws.*, wm.name AS member_name, wm.role AS member_role
@@ -48,5 +49,15 @@ export class WorkspaceMemberRepository {
       [userId],
     );
     return rows.map(keysToCamel);
+  }
+
+  async findMemberByIds(
+    userId: string,
+    workspaceId: string,
+  ): Promise<WorkspaceMember> {
+    return await this.repo.findOneBy({
+      user: { id: userId },
+      workspace: { id: workspaceId },
+    });
   }
 }

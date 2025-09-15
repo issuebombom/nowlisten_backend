@@ -1,4 +1,11 @@
-import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpStatus,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { CreateWorkspaceReqDto } from '../dto/create-workspace-req.dto';
 import { ApiOperation, ApiResponse } from '@nestjs/swagger';
@@ -7,10 +14,15 @@ import { Workspace } from '../entities/workspace.entity';
 import { AuthUser } from 'src/auth/decorators/auth-user.decorator';
 import { IJwtUserProfile } from 'src/auth/interfaces/auth-guard-user.interface';
 import { GetWorkspaceResDto } from '../dto/get-workspace-res.dto';
+import { InviteUserByEmailReqDto } from '../dto/invite-user-by-email-req.dto';
+import { WorkspaceInvitationService } from '../services/workspace-invitation.service';
 
 @Controller('ws')
 export class WorkspaceController {
-  constructor(private readonly workspaceService: WorkspaceService) {}
+  constructor(
+    private readonly workspaceService: WorkspaceService,
+    private readonly wsInvitationService: WorkspaceInvitationService,
+  ) {}
 
   @Post()
   @UseGuards(JwtAuthGuard)
@@ -39,5 +51,23 @@ export class WorkspaceController {
     @AuthUser() user: IJwtUserProfile,
   ): Promise<GetWorkspaceResDto[]> {
     return await this.workspaceService.getMyWorkspaces(user.userId);
+  }
+
+  @Post('invite/email')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: '워크스페이스 초대' })
+  @ApiResponse({
+    status: HttpStatus.CREATED,
+    description: '워크스페이스 초대 메일 발송 완료 (초대 레코드 생성)',
+  })
+  async inviteUserByEmail(
+    @AuthUser() user: IJwtUserProfile,
+    @Body() dto: InviteUserByEmailReqDto,
+  ): Promise<void> {
+    await this.wsInvitationService.createWorkspaceInvitaion(
+      user.userId,
+      dto.inviteeEmail,
+      dto.workspaceId,
+    );
   }
 }
