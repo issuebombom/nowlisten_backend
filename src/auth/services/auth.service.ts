@@ -20,6 +20,7 @@ import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Cache } from 'cache-manager';
 import { PasswordService } from './password.service';
 import { genCryptoId, genId } from 'src/common/utils/gen-id.util';
+import { calculateExpiry } from 'src/common/utils/calculate-expiry.util';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { AuthResetPasswordEvent } from '../events/auth.reset-password.event';
 import { UserRepository } from '../repositories/user.repository';
@@ -253,41 +254,11 @@ export class AuthService {
   private createRefreshToken(payload: JwtTokenPayload, user: User) {
     const expiresIn = this.configService.get<string>('JWT_REFRESH_EXPIRY');
     const token = this.jwtService.sign(payload, { expiresIn });
-    const expiresAt = this.calculateExpiry(expiresIn);
+    const expiresAt = calculateExpiry(expiresIn);
 
     // DB 저장
     this.refreshTokenService.saveRefreshToken(payload.jti, expiresAt, user);
 
     return token;
-  }
-
-  private calculateExpiry(expiresIn: string): Date {
-    const durationTime = parseInt(expiresIn.slice(0, -1), 10);
-    const timeFormat = expiresIn.slice(-1);
-
-    let milliseconds: number;
-
-    switch (timeFormat) {
-      case 'd':
-        milliseconds = durationTime * 24 * 60 * 60 * 1000; // days -> ms
-        break;
-      case 'h':
-        milliseconds = durationTime * 60 * 60 * 1000; // hours -> ms
-        break;
-      case 'm':
-        milliseconds = durationTime * 60 * 1000; // minutes -> ms
-        break;
-      case 's':
-        milliseconds = durationTime * 1000; // seconds -> ms
-        break;
-      default:
-        throw new BusinessException(
-          ErrorDomain.Auth,
-          `invalid duration string: ${expiresIn}`,
-          `invalid duration string: ${expiresIn}`,
-          HttpStatus.BAD_REQUEST,
-        );
-    }
-    return new Date(Date.now() + milliseconds);
   }
 }
