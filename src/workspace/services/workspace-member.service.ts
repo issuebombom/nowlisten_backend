@@ -1,6 +1,8 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
 import { WorkspaceMemberRepository } from '../repositories/workspace-member.repository';
 import {
+  combinePermissionByList,
+  hasWorkspacePermission,
   RolePermission,
   WorkspaceRolePermission,
 } from 'src/common/utils/role-permission';
@@ -15,7 +17,7 @@ export class WorkspaceMemberService {
   ) {}
 
   async hasRequiredRolePermission(
-    requiredRole: RolePermission | RolePermission[],
+    requiredPermission: RolePermission | RolePermission[],
     userId: string,
     workspaceId: string,
   ): Promise<WorkspaceMember> {
@@ -25,14 +27,17 @@ export class WorkspaceMemberService {
     );
 
     // permission이 여러 개일 경우
-    if (Array.isArray(requiredRole)) {
-      requiredRole = requiredRole.reduce((acc, value) => acc | value, 0);
+    if (Array.isArray(requiredPermission)) {
+      requiredPermission = combinePermissionByList(requiredPermission);
     }
-    const isAllowed =
-      (WorkspaceRolePermission[member.role] & requiredRole) === requiredRole;
+
+    const hasPermission = hasWorkspacePermission(
+      member.role,
+      requiredPermission,
+    );
 
     // 자격 증명 + 액티브 유저 유무
-    if (!isAllowed || member.status !== MemberStatus.ACTIVE) {
+    if (!hasPermission || member.status !== MemberStatus.ACTIVE) {
       throw new BusinessException(
         ErrorDomain.Workspace,
         `Permission Denied`,

@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   HttpStatus,
+  Param,
   Post,
   UseGuards,
 } from '@nestjs/common';
@@ -16,6 +17,8 @@ import { IJwtUserProfile } from 'src/auth/interfaces/auth-guard-user.interface';
 import { GetWorkspaceResDto } from '../dto/get-workspace-res.dto';
 import { InviteUserByEmailReqDto } from '../dto/invite-user-by-email-req.dto';
 import { WorkspaceInvitationService } from '../services/workspace-invitation.service';
+import { WorkspaceInvitation } from '../entities/workspace-invitation.entity';
+import { GetInvitationInfoResDto } from '../dto/get-invitation-info-res.dto';
 
 @Controller('ws')
 export class WorkspaceController {
@@ -68,6 +71,26 @@ export class WorkspaceController {
       user.userId,
       dto.inviteeEmail,
       dto.workspaceId,
+    );
+  }
+
+  // join 페이지 접속 시 보여 줄 초대 관련 정보 전달
+  @Get('invite/:token')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: '초대 정보 조회' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: '초대 토큰 기반 초대 정보 출력',
+    type: GetInvitationInfoResDto,
+  })
+  async getInvitationInfo(
+    @AuthUser() user: IJwtUserProfile,
+    @Param('token') invitationToken: string,
+  ): Promise<WorkspaceInvitation> {
+    return await this.wsInvitationService.getWorkspaceInvitationByToken(
+      user.userId,
+      user.email,
+      invitationToken,
     );
   }
 }

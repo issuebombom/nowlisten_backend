@@ -3,8 +3,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { WorkspaceInvitation } from '../entities/workspace-invitation.entity';
 import { Repository } from 'typeorm';
 import { InviteStatus } from 'src/common/types/invite-status.type';
-import { User } from 'src/auth/entities/user.entity';
 import { Workspace } from '../entities/workspace.entity';
+import { WorkspaceMember } from '../entities/workspace-member.entity';
 
 @Injectable()
 export class WorkspaceInvitationRepository {
@@ -18,7 +18,7 @@ export class WorkspaceInvitationRepository {
     invitedAt: Date,
     token: string,
     expiresAt: Date,
-    inviterUserId: string,
+    memberId: string,
     workspaceId: string,
   ) {
     const wsInvitation = new WorkspaceInvitation();
@@ -28,8 +28,34 @@ export class WorkspaceInvitationRepository {
     wsInvitation.invitedAt = invitedAt;
     wsInvitation.token = token;
     wsInvitation.expiresAt = expiresAt;
-    wsInvitation.user = { id: inviterUserId } as User;
+    wsInvitation.member = { id: memberId } as WorkspaceMember;
     wsInvitation.workspace = { id: workspaceId } as Workspace;
     return this.repo.save(wsInvitation);
+  }
+
+  async findWorkspaceInvitationByToken(
+    token: string,
+  ): Promise<WorkspaceInvitation> {
+    return this.repo
+      .createQueryBuilder('invitation')
+      .select([
+        'invitation.id',
+        'invitation.inviteeEmail',
+        'invitation.status',
+        'invitation.invitedAt',
+        'invitation.token',
+        'invitation.expiresAt',
+        'member.id',
+        'member.name',
+        'member.status',
+        'member.role',
+        'ws.id',
+        'ws.name',
+        'ws.status',
+      ])
+      .leftJoin('invitation.member', 'member')
+      .leftJoin('invitation.workspace', 'ws')
+      .where('invitation.token = :token', { token })
+      .getOne();
   }
 }

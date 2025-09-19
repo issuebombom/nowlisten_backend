@@ -10,6 +10,11 @@ import { GetWorkspaceResDto } from '../dto/get-workspace-res.dto';
 import { BusinessException } from 'src/exception/business-exception';
 import { ErrorDomain } from 'src/common/types/error-domain.type';
 import { Workspace } from '../entities/workspace.entity';
+import { WorkspaceStatus } from 'src/common/types/workspace-status.type';
+import {
+  RolePermission,
+  WorkspaceRolePermission,
+} from 'src/common/utils/role-permission';
 
 @Injectable()
 export class WorkspaceService {
@@ -54,7 +59,7 @@ export class WorkspaceService {
   /**
    * TODO: 워크스페이스 조회
    * - 유저 id로 워크스페이스 맴버 조회(status: active)
-   * - 비활성화된 워크스페이스(isActive) false는 제외 / OWNER의 경우 노출 (프론트 필요)
+   * - 비활성화된 워크스페이스(inactive)는 제외 / OWNER의 경우 노출 (프론트 필요)
    * - 최근 생성일로 정렬(쿼리에서진행, 유저에게 선택권 없음)
    */
   async getMyWorkspaces(userId: string): Promise<GetWorkspaceResDto[]> {
@@ -62,7 +67,10 @@ export class WorkspaceService {
       await this.workspaceMemberRepo.findWorkspaceByUserId(userId);
 
     return workspaces.filter(
-      (ws) => ws.isActive || ws.memberRole === WorkspaceRole.OWNER,
+      (ws) =>
+        ws.status === WorkspaceStatus.ACTIVE ||
+        WorkspaceRolePermission[ws.memberRole] &
+          RolePermission.WORKSPACE_MANAGE_SETTINGS,
     );
   }
 
