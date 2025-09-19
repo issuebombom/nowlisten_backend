@@ -1,4 +1,4 @@
-export enum MemberStatus {
+export enum WorkspaceStatus {
   ACTIVE = 'active',
   INACTIVE = 'inactive',
 }
