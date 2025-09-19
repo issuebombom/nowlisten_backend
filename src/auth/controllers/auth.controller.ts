@@ -63,9 +63,7 @@ export class AuthController {
   async signup(
     @Body() createUserReqDto: CreateUserReqDto,
   ): Promise<CreateUserResDto> {
-    return new CreateUserResDto(
-      await this.userService.createUser(createUserReqDto),
-    );
+    return await this.userService.createUser(createUserReqDto);
   }
 
   @Post('email/verification')
