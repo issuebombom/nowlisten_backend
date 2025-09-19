@@ -38,16 +38,10 @@ export enum RolePermission {
   PLUS_MESSAGE_VIEW_HISTORY = 1 << 17, // 131072
 
   // 묶음
-  WORKSPACE_ALL_PERMISSION = combinePermission(/^WORKSPACE_.*$/),
-  CHANNEL_ALL_PERMISSION = combinePermission(/^CHANNEL_.*$/),
-  MESSAGE_ALL_PERMISSION = combinePermission(/^MESSAGE_.*$/),
-  PLUS_CONTENTS_ALL_PERMISSION = combinePermission(/^PLUS_.*$/),
-}
-
-function combinePermission(regex: RegExp) {
-  return Object.entries(RolePermission)
-    .filter(([key]) => regex.test(key))
-    .reduce((acc, [, value]) => acc | (value as number), 0);
+  WORKSPACE_ALL_PERMISSION = combinePermissionByRegEx(/^WORKSPACE_.*$/),
+  CHANNEL_ALL_PERMISSION = combinePermissionByRegEx(/^CHANNEL_.*$/),
+  MESSAGE_ALL_PERMISSION = combinePermissionByRegEx(/^MESSAGE_.*$/),
+  PLUS_CONTENTS_ALL_PERMISSION = combinePermissionByRegEx(/^PLUS_.*$/),
 }
 
 export const WorkspaceRolePermission: Record<WorkspaceRole, number> = {
@@ -77,3 +71,28 @@ export const ChannelRolePermission: Record<ChannelRole, number> = {
   [ChannelRole.MANAGER]: WorkspaceRolePermission[WorkspaceRole.MEMBER],
   [ChannelRole.MEMBER]: WorkspaceRolePermission[WorkspaceRole.GUEST],
 };
+
+function combinePermissionByRegEx(regex: RegExp) {
+  return Object.entries(RolePermission)
+    .filter(([key]) => regex.test(key))
+    .reduce((acc, [, value]) => acc | (value as number), 0);
+}
+
+// 권한 비트를 합산
+export function combinePermissionByList(permissions: RolePermission[]) {
+  return permissions.reduce((acc, value) => acc | value, 0);
+}
+
+export function hasWorkspacePermission(
+  userRole: WorkspaceRole,
+  requiredRole: RolePermission,
+): boolean {
+  return (WorkspaceRolePermission[userRole] & requiredRole) === requiredRole;
+}
+
+export function hasChannelPermission(
+  userRole: ChannelRole,
+  requiredRole: RolePermission,
+): boolean {
+  return (ChannelRolePermission[userRole] & requiredRole) == requiredRole;
+}
