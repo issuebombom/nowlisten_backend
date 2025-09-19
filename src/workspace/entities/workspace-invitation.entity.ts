@@ -1,8 +1,8 @@
-import { User } from 'src/auth/entities/user.entity';
 import { BaseEntity } from 'src/common/entities/base-entity';
 import { InviteStatus } from 'src/common/types/invite-status.type';
 import { Column, Entity, JoinColumn, ManyToOne, Relation } from 'typeorm';
 import { Workspace } from './workspace.entity';
+import { WorkspaceMember } from './workspace-member.entity';
 
 @Entity()
 export class WorkspaceInvitation extends BaseEntity {
@@ -18,15 +18,15 @@ export class WorkspaceInvitation extends BaseEntity {
   @Column({ type: 'timestamptz', nullable: true })
   respondedAt: Date;
 
-  @Column({ type: 'varchar' })
+  @Column({ type: 'varchar', unique: true })
   token: string;
 
   @Column({ type: 'timestamptz' })
   expiresAt: Date;
 
-  @ManyToOne(() => User, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'inviter_user_id' })
-  user: Relation<User>;
+  @ManyToOne(() => WorkspaceMember, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'member_id' })
+  member: Relation<WorkspaceMember>;
 
   @ManyToOne(() => Workspace, { onDelete: 'CASCADE' })
   workspace: Relation<Workspace>;

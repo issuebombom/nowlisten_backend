@@ -31,7 +31,4 @@ export class User extends BaseEntity {
 
   @OneToMany(() => WorkspaceMember, (member) => member.user)
   workspaceMember: Relation<WorkspaceMember>;
-
-  @OneToMany(() => WorkspaceInvitation, (invitation) => invitation.user)
-  workspaceInvitation: Relation<WorkspaceInvitation>;
 }
