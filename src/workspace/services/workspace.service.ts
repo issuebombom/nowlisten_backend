@@ -49,8 +49,8 @@ export class WorkspaceService {
       userNickname,
       WorkspaceRole.OWNER,
       MemberStatus.ACTIVE,
-      workspace,
-      user,
+      workspace.id,
+      user.id,
     );
 
     return workspace;

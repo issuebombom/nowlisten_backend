@@ -20,16 +20,16 @@ export class WorkspaceMemberRepository {
     name: string,
     role: WorkspaceRole,
     status: MemberStatus,
-    workspace: Workspace,
-    user: User,
+    workspaceId: string,
+    userId: string,
   ): Promise<WorkspaceMember> {
     const member = new WorkspaceMember();
     member.name = name;
     member.role = role;
     member.status = status;
     member.joinedAt = new Date();
-    member.workspace = workspace;
-    member.user = user;
+    member.workspace = { id: workspaceId } as Workspace;
+    member.user = { id: userId } as User;
     return this.repo.save(member);
   }
 
@@ -49,6 +49,15 @@ export class WorkspaceMemberRepository {
       [userId],
     );
     return rows.map(keysToCamel);
+  }
+
+  async findMemberById(memberId: string): Promise<WorkspaceMember> {
+    return await this.repo
+      .createQueryBuilder('member')
+      .select(['member', 'user.id'])
+      .leftJoin('member.user', 'user')
+      .where('member.id = :memberId', { memberId })
+      .getOne();
   }
 
   async findMemberByIds(

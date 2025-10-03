@@ -33,6 +33,10 @@ export class WorkspaceInvitationRepository {
     return this.repo.save(wsInvitation);
   }
 
+  updateWorkspaceInvitationStatus(id: string, status: InviteStatus) {
+    return this.repo.update(id, { status });
+  }
+
   async findWorkspaceInvitationByToken(
     token: string,
   ): Promise<WorkspaceInvitation> {

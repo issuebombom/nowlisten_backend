@@ -1,10 +1,7 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
 import { WorkspaceInvitationRepository } from '../repositories/workspace-invitation.repository';
 import { WorkspaceMemberService } from './workspace-member.service';
-import {
-  RolePermission,
-  WorkspaceRolePermission,
-} from 'src/common/utils/role-permission';
+import { RolePermission } from 'src/common/utils/role-permission';
 import { WorkspaceService } from './workspace.service';
 import { BusinessException } from 'src/exception/business-exception';
 import { ErrorDomain } from 'src/common/types/error-domain.type';
@@ -15,22 +12,24 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { WorkspaceCreatedInvitationEvent } from '../events/workspace.created-invitation.event';
 import { WorkspaceStatus } from 'src/common/types/workspace-status.type';
 import { InviteStatus } from 'src/common/types/invite-status.type';
-import { UserService } from 'src/auth/services/user.service';
-import { MemberStatus } from 'src/common/types/member-status.type';
 import { WorkspaceInvitation } from '../entities/workspace-invitation.entity';
+import { Transactional } from 'typeorm-transactional';
+import { WorkspaceMemberRepository } from '../repositories/workspace-member.repository';
+import { WorkspaceRole } from 'src/common/types/workspace-role.type';
+import { MemberStatus } from 'src/common/types/member-status.type';
 
 @Injectable()
 export class WorkspaceInvitationService {
   constructor(
     private readonly configService: ConfigService,
-    private readonly userService: UserService,
     private readonly wsService: WorkspaceService,
     private readonly wsMemberService: WorkspaceMemberService,
+    private readonly wsMemberRepo: WorkspaceMemberRepository,
     private readonly wsInvitationRepo: WorkspaceInvitationRepository,
     private readonly eventEmitter: EventEmitter2,
   ) {}
 
-  async createWorkspaceInvitaion(
+  async createWorkspaceInvitation(
     inviterUserId: string,
     inviteeEmail: string,
     workspaceId: string,
@@ -80,14 +79,49 @@ export class WorkspaceInvitationService {
   }
 
   async getWorkspaceInvitationByToken(
-    userId: string,
     email: string,
     token: string,
   ): Promise<WorkspaceInvitation> {
-    // 토큰과 접속 유저 일치하는지 확인
     const invitation =
       await this.wsInvitationRepo.findWorkspaceInvitationByToken(token);
+    const member = await this.wsMemberService.findMemberById(
+      invitation.member.id,
+    );
 
+    // 초대 검증
+    await this.validateInvitation(invitation, member.user.id, email);
+
+    return invitation;
+  }
+
+  async approveInvitation(
+    userId: string,
+    email: string,
+    token: string,
+    nickname: string,
+  ) {
+    const invitation =
+      await this.wsInvitationRepo.findWorkspaceInvitationByToken(token);
+    const member = await this.wsMemberService.findMemberById(
+      invitation.member.id,
+    );
+
+    // 초대 검증
+    await this.validateInvitation(invitation, member.user.id, email);
+
+    // 트랜잭션 - invitation 업데이트, 멤버 생성
+    await this.updateInvitationAndCreateWorkspaceMember(
+      invitation,
+      nickname,
+      userId,
+    );
+  }
+
+  private async validateInvitation(
+    invitation: WorkspaceInvitation,
+    inviterUserId: string,
+    inviteeEmail: string,
+  ): Promise<void> {
     // 초대장의 상태, 만료일 체크
     if (
       invitation.status !== InviteStatus.INVITED ||
@@ -101,7 +135,7 @@ export class WorkspaceInvitationService {
       );
     }
     // 해당 유저가 초대받은 유저가 맞는가
-    if (invitation.inviteeEmail !== email) {
+    if (invitation.inviteeEmail !== inviteeEmail) {
       throw new BusinessException(
         ErrorDomain.Workspace,
         `Invitation email does not match`,
@@ -118,13 +152,34 @@ export class WorkspaceInvitationService {
         HttpStatus.FORBIDDEN,
       );
     }
+
     // 초대한 멤버의 현재 자격 증명
     await this.wsMemberService.hasRequiredRolePermission(
       RolePermission.WORKSPACE_INVITE_MEMBER,
-      userId,
+      inviterUserId,
       invitation.workspace.id,
     );
+  }
 
-    return invitation;
+  @Transactional()
+  private async updateInvitationAndCreateWorkspaceMember(
+    invitation: WorkspaceInvitation,
+    nickname: string,
+    userId: string,
+  ) {
+    // invitation status를 변경
+    await this.wsInvitationRepo.updateWorkspaceInvitationStatus(
+      invitation.id,
+      InviteStatus.ACCEPTED,
+    );
+
+    // 신규 멤버 생성
+    await this.wsMemberRepo.createMember(
+      nickname,
+      WorkspaceRole.MEMBER,
+      MemberStatus.ACTIVE,
+      invitation.workspace.id,
+      userId,
+    );
   }
 }

@@ -19,6 +19,7 @@ import { InviteUserByEmailReqDto } from '../dto/invite-user-by-email-req.dto';
 import { WorkspaceInvitationService } from '../services/workspace-invitation.service';
 import { WorkspaceInvitation } from '../entities/workspace-invitation.entity';
 import { GetInvitationInfoResDto } from '../dto/get-invitation-info-res.dto';
+import { ApproveInvitationReqDto } from '../dto/approve-invitation-req.dto';
 
 @Controller('ws')
 export class WorkspaceController {
@@ -67,14 +68,14 @@ export class WorkspaceController {
     @AuthUser() user: IJwtUserProfile,
     @Body() dto: InviteUserByEmailReqDto,
   ): Promise<void> {
-    await this.wsInvitationService.createWorkspaceInvitaion(
+    await this.wsInvitationService.createWorkspaceInvitation(
       user.userId,
       dto.inviteeEmail,
       dto.workspaceId,
     );
   }
 
-  // join 페이지 접속 시 보여 줄 초대 관련 정보 전달
+  // 유저가 ws join 페이지 접속 시 보여 줄 초대 관련 정보
   @Get('invite/:token')
   @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: '초대 정보 조회' })
@@ -88,9 +89,29 @@ export class WorkspaceController {
     @Param('token') invitationToken: string,
   ): Promise<WorkspaceInvitation> {
     return await this.wsInvitationService.getWorkspaceInvitationByToken(
+      user.email,
+      invitationToken,
+    );
+  }
+
+  // 초대 수락(참여하기)
+  @Post('invite/:token/approve')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: '초대 승인' })
+  @ApiResponse({
+    status: HttpStatus.ACCEPTED,
+    description: '초대 승인 완료',
+  })
+  async approveInvitation(
+    @AuthUser() user: IJwtUserProfile,
+    @Param('token') invitationToken: string,
+    @Body() approveInvitationReqDto: ApproveInvitationReqDto,
+  ): Promise<void> {
+    await this.wsInvitationService.approveInvitation(
       user.userId,
       user.email,
       invitationToken,
+      approveInvitationReqDto.nickname,
     );
   }
 }
