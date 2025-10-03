@@ -4,7 +4,6 @@ import { Column, Entity, OneToMany, Relation } from 'typeorm';
 import { RefreshToken } from './refresh-token.entity';
 import { SocialProvider } from 'src/common/types/social-provider.type';
 import { WorkspaceMember } from 'src/workspace/entities/workspace-member.entity';
-import { WorkspaceInvitation } from 'src/workspace/entities/workspace-invitation.entity';
 
 @Entity()
 export class User extends BaseEntity {
