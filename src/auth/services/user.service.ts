@@ -35,8 +35,9 @@ export class UserService {
       'user.created',
       new UserCreatedEvent(dto.email, dto.name),
     );
-
-    return await this.userRepo.createUser(dto, hashedPassword);
+    return CreateUserResDto.of(
+      await this.userRepo.createUser(dto, hashedPassword),
+    );
   }
 
   async createSocialUser(profile: ISocialUserProfile): Promise<User> {
