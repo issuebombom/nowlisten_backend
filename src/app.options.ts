@@ -93,6 +93,7 @@ export class CustomQueryLogger extends AbstractLogger {
 
   logQuery(query: string): void {
     this.writeLog('query', {
+      type: 'query',
       message: `\n${query}\n`,
       format: 'sql', // 포맷을 명시하지 않을 경우 sql pretty가 적용 안됨
     });
@@ -101,7 +102,7 @@ export class CustomQueryLogger extends AbstractLogger {
   logQueryError(error: string, query: string): void {
     this.writeLog('error', {
       type: 'query-error',
-      message: `\n${query} -- ${error}\n`,
+      message: `${error.toString().split(': ')[1]}\n${query}}\n`,
     });
   }
 
@@ -134,11 +135,11 @@ export class CustomQueryLogger extends AbstractLogger {
         case 'query':
           this.logger.log(message.message, 'Query');
           break;
+        case 'query-error':
+          this.logger.error(message.message, null, 'QueryError');
+          break;
         case 'query-slow':
           this.logger.warn(message.message, `SlowQuery`);
-          break;
-        case 'query-error':
-          this.logger.error(message.message, 'QueryError');
           break;
         // case 'schema-build':
         // case 'migration':
