@@ -14,8 +14,8 @@ export class RefreshTokenService {
   }
 
   async hasToken(jti: string): Promise<boolean> {
-    const found = await this.refreshTokenRepo.getRefreshTokenByJti(jti);
-    return !!found;
+    const refreshToken = await this.refreshTokenRepo.getRefreshTokenByJti(jti);
+    return !!refreshToken && refreshToken.expiresAt > new Date();
   }
 
   revokeRefreshToken(jti: string): void {

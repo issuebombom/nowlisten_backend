@@ -19,10 +19,14 @@ import { SocialProvider } from 'src/common/types/social-provider.type';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Cache } from 'cache-manager';
 import { PasswordService } from './password.service';
-import { genId, genCryptoId } from 'src/common/utils/gen-id';
+import { genCryptoId, genId } from 'src/common/utils/gen-id.util';
+import { calculateExpiry } from 'src/common/utils/calculate-expiry.util';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { AuthResetPasswordEvent } from '../events/auth-reset-password.event';
+import { AuthResetPasswordEvent } from '../events/auth.reset-password.event';
 import { UserRepository } from '../repositories/user.repository';
+import { joinRedisKey, RedisNamespace } from 'src/redis/redis-keys';
+import { AuthSendVerificationCodeEvent } from '../events/auth.send-verification-code.event';
+import { AuthMethod } from 'src/common/types/auth-method.type';
 
 export type JwtToken = {
   access: string;
@@ -51,6 +55,21 @@ export class AuthService {
     private readonly eventEmitter: EventEmitter2,
   ) {}
 
+  async sendVerificationEmail(email: string): Promise<void> {
+    await this.userService.ensureUserNotExists(email);
+    const tempCode = genId(6).toUpperCase();
+    await this.cacheManager.set(
+      joinRedisKey(RedisNamespace.EMAIL_VERIFY, email),
+      tempCode,
+      5 * 60 * 1000, // 5분
+    );
+
+    this.eventEmitter.emitAsync(
+      'auth.send-verification-code',
+      new AuthSendVerificationCodeEvent(AuthMethod.EMAIL, email, tempCode),
+    );
+  }
+
   async login(dto: LoginReqDto): Promise<JwtToken> {
     const user = await this.userService.getUserByEmailWithPassword(dto.email);
     // ! NOTE: 소셜 가입 + 로컬 가입(이중 가입)을 허용할 것인가 말 것인가?
@@ -78,11 +97,30 @@ export class AuthService {
     return { access, refresh };
   }
 
-  async googleLogin(profile: ISocialUserProfile): Promise<string> {
-    // 유저 생성 또는 획득
+  async googleLogin(profile: ISocialUserProfile) {
+    // 우선 구글 로그인에 성공했으니 유저 생성 또는 획득
     const user = await this.userService.createSocialUser(profile);
+    const namespace = RedisNamespace.SOCIAL_LOGIN;
 
-    // TODO: 토큰 발행을 지금할 필요가 있나?? 세션 검증 후 해도 되잖아
+    // ! NOTE: 임시 토큰 생성 후 캐시 등록 (추후 레디스로 대체 필요)
+    // jwt 전달을 위한 임시토큰 생성
+    const tempToken = genCryptoId();
+    await this.cacheManager.set(
+      joinRedisKey(namespace, tempToken),
+      user.id,
+      10 * 1000, // 10초
+    );
+
+    return tempToken;
+  }
+
+  async getAccessRefresh(namespace: RedisNamespace, tempToken: string) {
+    const key = joinRedisKey(namespace, tempToken);
+    const userId = await this.verifyRedisKey(key);
+
+    // 유저 생성완료 및 존재 유무 확인
+    const user = await this.userService.getUserById(userId);
+
     const [accessPayload, refreshPayload] = await Promise.all([
       this.createJwtTokenPayload(user.id),
       this.createJwtTokenPayload(user.id),
@@ -93,39 +131,10 @@ export class AuthService {
       this.createRefreshToken(refreshPayload, user),
     ]);
 
-    // ! NOTE: 임시 토큰 생성 후 캐시 등록 (추후 레디스로 대체 필요)
-    // TODO: access, refresh를 굳이 레디스에 자리 차지하게 올릴 필요 없잖아
-    // - 보안 강화를 위해 crypto 쓰자
-    // - sessionId말고 tempToken이라 쓰자
-    const sessionId = genId(16);
-    await this.cacheManager.set(
-      `social-login:${sessionId}`,
-      { access, refresh },
-      5000,
-    );
-
-    return sessionId;
-  }
-
-  // TODO: sessionId말고 tempToken으로 쓰자
-  async getAccessRefresh(sessionId: string) {
-    const value = await this.cacheManager.get<JwtToken>(
-      `social-login:${sessionId}`,
-    );
-    if (!value) {
-      throw new BusinessException(
-        ErrorDomain.Auth,
-        `token has expired`,
-        `sessionid ${sessionId} has expired`,
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-
-    // TODO: 검증 후 토큰 생성해도 되잖아
-
     // 캐시 삭제
-    this.cacheManager.del(sessionId);
-    return value;
+    this.cacheManager.del(key);
+
+    return { access, refresh };
   }
 
   async refresh(user: IJwtUserProfile): Promise<RefreshResDto> {
@@ -146,40 +155,45 @@ export class AuthService {
   async forgotPassword(email: string): Promise<void> {
     // 유저 조회
     const user = await this.userService.getUserByEmail(email);
+    // 네임스페이스 지정
+    const namespace = RedisNamespace.PASSWORD_RESET;
     // 토큰 생성
     const tempToken = genCryptoId();
     // 메모리 저장
     await this.cacheManager.set(
-      `reset-password:${tempToken}`,
+      joinRedisKey(namespace, tempToken),
       user.id,
       5 * 60 * 1000,
     ); // 5분
 
     // 이벤트 발행
-    this.eventEmitter.emit(
+    this.eventEmitter.emitAsync(
       'auth.reset-password',
       new AuthResetPasswordEvent(tempToken, user.email, user.name),
     );
   }
 
-  async resetPassword(token: string, plainPassword: string): Promise<void> {
-    const userId = await this.cacheManager.get<string>(
-      `reset-password:${token}`,
+  async verifyTempToken(
+    namespace: RedisNamespace,
+    subkeys: string | string[],
+    compareValue?: string,
+  ) {
+    const key = joinRedisKey(
+      namespace,
+      ...(Array.isArray(subkeys) ? subkeys : [subkeys]),
     );
+    await this.verifyRedisKey(key, compareValue);
+  }
 
-    if (!userId) {
-      throw new BusinessException(
-        ErrorDomain.Auth,
-        `token ${token} has expired`,
-        `token has expired`,
-        HttpStatus.BAD_REQUEST,
-      );
-    }
+  async resetPassword(token: string, plainPassword: string): Promise<void> {
+    const key = joinRedisKey(RedisNamespace.PASSWORD_RESET, token);
+    const userId = await this.verifyRedisKey(key);
 
     // 유저 검증
     const user = await this.userService.getUserByIdWithPassword(userId);
 
     // 동일 패스워드 검증
+    // TODO: 패스워드 재설정 (사실상 초기화)인데 굳이 이전값과 동일함을 점검할 필요가 있을까?
     await this.passwordService.isSamePassword(plainPassword, user.password);
 
     // 패스워드 변경
@@ -188,7 +202,7 @@ export class AuthService {
     await this.userRepo.updatePassword(userId, hashedPassword);
 
     // 메모리 삭제
-    this.cacheManager.del(`reset-password:${token}`);
+    this.cacheManager.del(key);
   }
 
   logout(jti: string): void {
@@ -197,6 +211,29 @@ export class AuthService {
 
   logoutAllDevices(userId: string): void {
     this.refreshTokenService.revokeAllRefreshTokens(userId);
+  }
+
+  private async verifyRedisKey(key: string, compareValue?: string) {
+    const value = await this.cacheManager.get<string>(key);
+
+    if (!value) {
+      throw new BusinessException(
+        ErrorDomain.Auth,
+        `redis key ${key} has expired`,
+        `token has expired`,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    if (compareValue && value !== compareValue) {
+      throw new BusinessException(
+        ErrorDomain.Auth,
+        `compare value "${compareValue}" mismatch`,
+        `invalid value`,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    return value;
   }
 
   private createJwtTokenPayload(userId: string): JwtTokenPayload {
@@ -217,41 +254,11 @@ export class AuthService {
   private createRefreshToken(payload: JwtTokenPayload, user: User) {
     const expiresIn = this.configService.get<string>('JWT_REFRESH_EXPIRY');
     const token = this.jwtService.sign(payload, { expiresIn });
-    const expiresAt = this.calculateExpiry(expiresIn);
+    const expiresAt = calculateExpiry(expiresIn);
 
     // DB 저장
     this.refreshTokenService.saveRefreshToken(payload.jti, expiresAt, user);
 
     return token;
-  }
-
-  private calculateExpiry(expiresIn: string): Date {
-    const durationTime = parseInt(expiresIn.slice(0, -1), 10);
-    const timeFormat = expiresIn.slice(-1);
-
-    let milliseconds: number;
-
-    switch (timeFormat) {
-      case 'd':
-        milliseconds = durationTime * 24 * 60 * 60 * 1000; // days -> ms
-        break;
-      case 'h':
-        milliseconds = durationTime * 60 * 60 * 1000; // hours -> ms
-        break;
-      case 'm':
-        milliseconds = durationTime * 60 * 1000; // minutes -> ms
-        break;
-      case 's':
-        milliseconds = durationTime * 1000; // seconds -> ms
-        break;
-      default:
-        throw new BusinessException(
-          ErrorDomain.Auth,
-          `invalid duration string: ${expiresIn}`,
-          `invalid duration string: ${expiresIn}`,
-          HttpStatus.BAD_REQUEST,
-        );
-    }
-    return new Date(Date.now() + milliseconds);
   }
 }

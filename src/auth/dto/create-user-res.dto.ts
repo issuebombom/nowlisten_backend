@@ -6,14 +6,14 @@ export class CreateUserResDto extends BaseResDto {
   email: string;
   phone: string;
 
-  // Res body
-  constructor(user: Partial<User>) {
-    super();
-    this.id = user.id;
-    this.name = user.name;
-    this.email = user.email;
-    this.phone = user.phone;
-    this.createdAt = user.createdAt;
-    this.updatedAt = user.updatedAt;
+  static of(user: User): CreateUserResDto {
+    return {
+      name: user.name,
+      email: user.email,
+      phone: user.phone,
+      id: user.id,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+    };
   }
 }

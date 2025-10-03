@@ -2,6 +2,7 @@ import { SocialProvider } from 'src/common/types/social-provider.type';
 
 export interface IJwtUserProfile {
   userId: string;
+  email: string;
   iat: number;
   jti: string;
 }

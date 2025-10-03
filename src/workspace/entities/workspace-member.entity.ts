@@ -1,9 +1,10 @@
 import { User } from 'src/auth/entities/user.entity';
 import { BaseEntity } from 'src/common/entities/base-entity';
 import { WorkspaceRole } from 'src/common/types/workspace-role.type';
-import { Column, Entity, ManyToOne, Relation } from 'typeorm';
+import { Column, Entity, ManyToOne, OneToMany, Relation } from 'typeorm';
 import { Workspace } from './workspace.entity';
 import { MemberStatus } from 'src/common/types/member-status.type';
+import { WorkspaceInvitation } from './workspace-invitation.entity';
 
 @Entity()
 export class WorkspaceMember extends BaseEntity {
@@ -21,6 +22,9 @@ export class WorkspaceMember extends BaseEntity {
 
   @Column({ type: 'boolean', default: true })
   isReceiveAlert: boolean;
+
+  @OneToMany(() => WorkspaceInvitation, (invitation) => invitation.member)
+  invitation: Relation<WorkspaceInvitation>;
 
   @ManyToOne(() => User, { onDelete: 'CASCADE' })
   user: Relation<User>;

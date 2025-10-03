@@ -1,5 +1,6 @@
-import { NestApplicationOptions, ValidationPipe } from '@nestjs/common';
+import { Logger, NestApplicationOptions, ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { AbstractLogger, QueryRunner, LogLevel, LogMessage } from 'typeorm';
 import {
   WinstonModule,
   utilities as nestWinstonModuleUtilities,
@@ -14,7 +15,6 @@ export function getNestOptions(): NestApplicationOptions {
   const configService = new ConfigService();
   const env = configService.get<string>('ENV');
   const serviceName = configService.get<string>('SERVICE_NAME');
-  const colorize = env !== 'prod';
 
   return {
     abortOnError: true,
@@ -27,8 +27,8 @@ export function getNestOptions(): NestApplicationOptions {
               ? winston.format.combine(
                   winston.format.timestamp(),
                   nestWinstonModuleUtilities.format.nestLike(serviceName, {
-                    colors: colorize,
-                    prettyPrint: true,
+                    colors: true,
+                    prettyPrint: false,
                   }),
                 )
               : null,
@@ -82,5 +82,73 @@ export class GlobalValidationPipe {
       transform: true,
       exceptionFactory: validationExceptionFilter,
     });
+  }
+}
+
+// TypeORM query custum logger
+export class CustomQueryLogger extends AbstractLogger {
+  constructor(private readonly logger = new Logger('TypeOrmQuery')) {
+    super();
+  }
+
+  logQuery(query: string): void {
+    this.writeLog('query', {
+      type: 'query',
+      message: `\n${query}\n`,
+      format: 'sql', // 포맷을 명시하지 않을 경우 sql pretty가 적용 안됨
+    });
+  }
+
+  logQueryError(error: string, query: string): void {
+    this.writeLog('error', {
+      type: 'query-error',
+      message: `${error.toString().split(': ')[1]}\n${query}}\n`,
+    });
+  }
+
+  logQuerySlow(time: number, query: string): void {
+    this.writeLog('warn', {
+      type: 'query-slow',
+      message: `\n${query} [${time} ms]\n`,
+      format: 'sql', // 포맷을 명시하지 않을 경우 sql pretty가 적용 안됨
+    });
+  }
+
+  // logSchemaBuild(message: string, queryRunner?: QueryRunner): void {}
+  // logMigration(message: string, queryRunner?: QueryRunner): void {}
+
+  protected writeLog(
+    level: LogLevel,
+    logMessage: LogMessage | LogMessage[],
+    queryRunner?: QueryRunner,
+  ) {
+    const messages = this.prepareLogMessages(
+      logMessage,
+      {
+        highlightSql: true,
+        formatSql: false,
+      },
+      queryRunner,
+    );
+    for (const message of messages) {
+      switch (message.type ?? level) {
+        case 'query':
+          this.logger.log(message.message, 'Query');
+          break;
+        case 'query-error':
+          this.logger.error(message.message, null, 'QueryError');
+          break;
+        case 'query-slow':
+          this.logger.warn(message.message, `SlowQuery`);
+          break;
+        // case 'schema-build':
+        // case 'migration':
+        // case 'info':
+        // case 'error':
+        // case 'warn':
+        default:
+          this.logger.log(message.message, 'Query');
+      }
+    }
   }
 }

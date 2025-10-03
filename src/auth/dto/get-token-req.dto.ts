@@ -1,7 +1,3 @@
-import { IsNotEmpty, IsString } from 'class-validator';
+import { VerifyTempTokenReqDto } from './verify-temp-token-req.dto';
 
-export class GetTokenReqDto {
-  @IsNotEmpty()
-  @IsString()
-  sessionId: string;
-}
+export class GetTokenReqDto extends VerifyTempTokenReqDto {}

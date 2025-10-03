@@ -21,9 +21,14 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
   async validate(payload: JwtTokenPayload): Promise<IJwtUserProfile> {
     // getUserById에서 유저 존재 확인
-    await this.userService.getUserById(payload.sub);
+    const user = await this.userService.getUserById(payload.sub);
 
     // passport는 아래 반환 값을 req.user에 자동으로 첨부
-    return { userId: payload.sub, iat: payload.iat, jti: payload.jti };
+    return {
+      userId: payload.sub,
+      email: user.email,
+      iat: payload.iat,
+      jti: payload.jti,
+    };
   }
 }
