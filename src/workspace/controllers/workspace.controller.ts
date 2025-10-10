@@ -4,6 +4,7 @@ import {
   Get,
   HttpStatus,
   Param,
+  Patch,
   Post,
   UseGuards,
 } from '@nestjs/common';
@@ -95,7 +96,7 @@ export class WorkspaceController {
   }
 
   // 초대 수락(참여하기)
-  @Post('invite/:token/approve')
+  @Post('invite/:token/join/approve')
   @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: '초대 승인' })
   @ApiResponse({
@@ -112,6 +113,42 @@ export class WorkspaceController {
       user.email,
       invitationToken,
       approveInvitationReqDto.nickname,
+    );
+  }
+
+  // 초대 거절(참여 거절)
+  @Patch('invite/:token/join/reject')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: '초대 거절' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: '초대 거절 완료',
+  })
+  async rejectInvitation(
+    @AuthUser() user: IJwtUserProfile,
+    @Param('token') invitationToken: string,
+  ): Promise<void> {
+    await this.wsInvitationService.rejectInvitation(
+      user.email,
+      invitationToken,
+    );
+  }
+
+  // 초대 생성자의 취소
+  @Patch('invite/:token/cancel')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: '초대 취소' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: '초대 상태 취소 변경',
+  })
+  async cancelInvitation(
+    @Param('token') invitationToken: string,
+    @AuthUser() user: IJwtUserProfile,
+  ): Promise<void> {
+    await this.wsInvitationService.cancelInvitation(
+      user.userId,
+      invitationToken,
     );
   }
 }
