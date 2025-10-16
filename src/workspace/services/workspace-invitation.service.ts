@@ -50,6 +50,7 @@ export class WorkspaceInvitationService {
         HttpStatus.BAD_REQUEST,
       );
     }
+
     // 토큰 생성
     const inviteToken = genCryptoId(32);
     // 초대 날짜 생성
@@ -57,15 +58,38 @@ export class WorkspaceInvitationService {
     // 토큰 만료일 생성 (env에서 expiresIn 기반)
     const expiresIn = this.configService.get<string>('INVITATION_EMAIL_EXPIRY');
     const expiresAt = calculateExpiry(expiresIn, invitedAt);
-    // 초대 레코드 생성
-    await this.wsInvitationRepo.createWorkspaceInvitation(
-      inviteeEmail,
-      invitedAt,
-      inviteToken,
-      expiresAt,
+
+    // 이미 초대한 이력이 있을 경우 이미 생성된 레코드를 재사용
+    const alreadyInvited = await this.isAlreadyInvited(
       member.id,
       workspaceId,
+      inviteeEmail,
     );
+    if (alreadyInvited) {
+      // 기존 초대 레코드 수정 및 재사용
+      alreadyInvited.status = InviteStatus.INVITED;
+      alreadyInvited.invitedAt = invitedAt;
+      alreadyInvited.respondedAt = null;
+      alreadyInvited.token = inviteToken;
+      alreadyInvited.expiresAt = expiresAt;
+
+      const { createdAt, updatedAt, ...editInvitation } = alreadyInvited;
+
+      await this.wsInvitationRepo.updateWorkspaceInvitation(
+        alreadyInvited.id,
+        editInvitation,
+      );
+    } else {
+      // 초대 레코드 생성
+      await this.wsInvitationRepo.createWorkspaceInvitation(
+        inviteeEmail,
+        invitedAt,
+        inviteToken,
+        expiresAt,
+        member.id,
+        workspaceId,
+      );
+    }
     // 초대 이벤트 발송 (초대자 이메일, 워크스페이스 이름, 초대한 유저 이름, 초대 코드)
     this.eventEmitter.emitAsync(
       'workspace.created-invitation',
@@ -89,12 +113,11 @@ export class WorkspaceInvitationService {
     );
   }
 
-  async getWorkspaceInvitationByToken(
+  async getInvitationInfo(
     email: string,
     token: string,
   ): Promise<WorkspaceInvitation> {
-    const invitation =
-      await this.wsInvitationRepo.findWorkspaceInvitationByToken(token);
+    const invitation = await this.getWorkspaceInvitationByToken(token);
     const member = await this.wsMemberService.findMemberById(
       invitation.member.id,
     );
@@ -111,8 +134,7 @@ export class WorkspaceInvitationService {
     token: string,
     nickname: string,
   ): Promise<void> {
-    const invitation =
-      await this.wsInvitationRepo.findWorkspaceInvitationByToken(token);
+    const invitation = await this.getWorkspaceInvitationByToken(token);
     const member = await this.wsMemberService.findMemberById(
       invitation.member.id,
     );
@@ -129,8 +151,7 @@ export class WorkspaceInvitationService {
   }
 
   async rejectInvitation(email: string, token: string): Promise<void> {
-    const invitation =
-      await this.wsInvitationRepo.findWorkspaceInvitationByToken(token);
+    const invitation = await this.getWorkspaceInvitationByToken(token);
     const member = await this.wsMemberService.findMemberById(
       invitation.member.id,
     );
@@ -138,15 +159,14 @@ export class WorkspaceInvitationService {
     // 초대 검증
     await this.validateInvitation(invitation, member.user.id, email);
 
-    await this.wsInvitationRepo.updateWorkspaceInvitationStatus(
-      invitation.id,
-      InviteStatus.REJECTED,
-    );
+    await this.wsInvitationRepo.updateWorkspaceInvitation(invitation.id, {
+      status: InviteStatus.REJECTED,
+      respondedAt: new Date(),
+    });
   }
 
   async cancelInvitation(userId: string, token: string): Promise<void> {
-    const invitation =
-      await this.wsInvitationRepo.findWorkspaceInvitationByToken(token);
+    const invitation = await this.getWorkspaceInvitationByToken(token);
     const member = await this.wsMemberRepo.findMemberByIds(
       userId,
       invitation.workspace.id,
@@ -169,10 +189,43 @@ export class WorkspaceInvitationService {
         HttpStatus.UNAUTHORIZED,
       );
     }
-    await this.wsInvitationRepo.updateWorkspaceInvitationStatus(
-      invitation.id,
-      InviteStatus.CANCELED,
+    await this.wsInvitationRepo.updateWorkspaceInvitation(invitation.id, {
+      status: InviteStatus.CANCELED,
+    });
+  }
+
+  async getWorkspaceInvitationByToken(
+    token: string,
+  ): Promise<WorkspaceInvitation> {
+    const invitation =
+      await this.wsInvitationRepo.findWorkspaceInvitationByToken(token);
+
+    if (!invitation) {
+      throw new BusinessException(
+        ErrorDomain.Workspace,
+        `token not exists: ${token}`,
+        `token not exists`,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    return invitation;
+  }
+
+  private async isAlreadyInvited(
+    memberId: string,
+    workspaceId: string,
+    inviteeEmail: string,
+  ): Promise<WorkspaceInvitation> {
+    const invitations = await this.wsInvitationRepo.findMyWorkspaceInvitations(
+      memberId,
+      workspaceId,
     );
+    const invitation = invitations.find(
+      (obj) => obj.inviteeEmail === inviteeEmail,
+    );
+
+    return invitation;
   }
 
   private async validateInvitation(
@@ -226,10 +279,10 @@ export class WorkspaceInvitationService {
     userId: string,
   ) {
     // invitation status를 변경
-    await this.wsInvitationRepo.updateWorkspaceInvitationStatus(
-      invitation.id,
-      InviteStatus.ACCEPTED,
-    );
+    await this.wsInvitationRepo.updateWorkspaceInvitation(invitation.id, {
+      status: InviteStatus.ACCEPTED,
+      respondedAt: new Date(),
+    });
 
     // 신규 멤버 생성
     await this.wsMemberRepo.createMember(

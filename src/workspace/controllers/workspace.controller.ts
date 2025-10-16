@@ -96,7 +96,7 @@ export class WorkspaceController {
     );
   }
 
-  // 유저가 ws join 페이지 접속 시 보여 줄 초대 관련 정보
+  // 초대받은 유저가 ws join 페이지 접속 시 보여 줄 초대 관련 정보
   @Get('invite/:token')
   @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: '초대 정보 조회' })
@@ -109,7 +109,7 @@ export class WorkspaceController {
     @AuthUser() user: IJwtUserProfile,
     @Param('token') invitationToken: string,
   ): Promise<WorkspaceInvitation> {
-    return await this.wsInvitationService.getWorkspaceInvitationByToken(
+    return await this.wsInvitationService.getInvitationInfo(
       user.email,
       invitationToken,
     );

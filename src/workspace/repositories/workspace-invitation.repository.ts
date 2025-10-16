@@ -33,8 +33,8 @@ export class WorkspaceInvitationRepository {
     return this.repo.save(wsInvitation);
   }
 
-  updateWorkspaceInvitationStatus(id: string, status: InviteStatus) {
-    return this.repo.update(id, { status, respondedAt: new Date() });
+  updateWorkspaceInvitation(id: string, options: Partial<WorkspaceInvitation>) {
+    return this.repo.update(id, options);
   }
 
   findMyWorkspaceInvitations(memberId: string, workspaceId: string) {
