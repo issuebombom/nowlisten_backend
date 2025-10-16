@@ -11,7 +11,7 @@ import { PasswordService } from './password.service';
 import { UpdateUserReqDto } from '../dto/update-user-req.dto';
 import { RefreshTokenService } from './refresh-token.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { UserCreatedEvent } from '../events/user-created.event';
+import { UserCreatedEvent } from '../events/user.created.event';
 
 @Injectable()
 export class UserService {
@@ -24,35 +24,20 @@ export class UserService {
   ) {}
 
   async createUser(dto: CreateUserReqDto): Promise<CreateUserResDto> {
-    const user = await this.userRepo.findUserByEmail(dto.email);
-    if (user) {
-      if (user.provider !== SocialProvider.LOCAL) {
-        throw new BusinessException(
-          ErrorDomain.Auth,
-          `already exists via social login: ${dto.email}`,
-          `email ${dto.email} already exists via social login`,
-          HttpStatus.BAD_REQUEST,
-        );
-      } else {
-        throw new BusinessException(
-          ErrorDomain.Auth,
-          `already exists: ${dto.email}`,
-          `email ${dto.email} already exists`,
-          HttpStatus.BAD_REQUEST,
-        );
-      }
-    }
+    await this.ensureUserNotExists(dto.email);
     const hashedPassword = await this.passwordService.hashedPassword(
       dto.password,
     );
 
     // 유저 생성 이벤트
-    this.eventEmitter.emit(
+    // TODO: 추후 queue로 변경
+    this.eventEmitter.emitAsync(
       'user.created',
       new UserCreatedEvent(dto.email, dto.name),
     );
-
-    return await this.userRepo.createUser(dto, hashedPassword);
+    return CreateUserResDto.of(
+      await this.userRepo.createUser(dto, hashedPassword),
+    );
   }
 
   async createSocialUser(profile: ISocialUserProfile): Promise<User> {
@@ -160,5 +145,26 @@ export class UserService {
     await this.passwordService.varifyPassword(password, user.password);
     this.refreshTokenService.revokeAllRefreshTokens(user.id);
     this.userRepo.deleteUser(id);
+  }
+
+  async ensureUserNotExists(email: string): Promise<void> {
+    const user = await this.userRepo.findUserByEmail(email);
+    if (user) {
+      if (user.provider !== SocialProvider.LOCAL) {
+        throw new BusinessException(
+          ErrorDomain.Auth,
+          `already exists via social login: ${email}`,
+          `email ${email} already exists via social login`,
+          HttpStatus.BAD_REQUEST,
+        );
+      } else {
+        throw new BusinessException(
+          ErrorDomain.Auth,
+          `already exists: ${email}`,
+          `email ${email} already exists`,
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+    }
   }
 }
