@@ -78,6 +78,17 @@ export class WorkspaceInvitationService {
     );
   }
 
+  async getMyWorkspaceInvitations(
+    userId: string,
+    workspaceId: string,
+  ): Promise<WorkspaceInvitation[]> {
+    const member = await this.wsMemberRepo.findMemberByIds(userId, workspaceId);
+    return await this.wsInvitationRepo.findMyWorkspaceInvitations(
+      member.id,
+      workspaceId,
+    );
+  }
+
   async getWorkspaceInvitationByToken(
     email: string,
     token: string,

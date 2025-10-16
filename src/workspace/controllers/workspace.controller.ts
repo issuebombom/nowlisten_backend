@@ -21,6 +21,7 @@ import { WorkspaceInvitationService } from '../services/workspace-invitation.ser
 import { WorkspaceInvitation } from '../entities/workspace-invitation.entity';
 import { GetInvitationInfoResDto } from '../dto/get-invitation-info-res.dto';
 import { ApproveInvitationReqDto } from '../dto/approve-invitation-req.dto';
+import { getInvitationResDto } from '../dto/get-invitation-res.dto';
 
 @Controller('ws')
 export class WorkspaceController {
@@ -56,6 +57,25 @@ export class WorkspaceController {
     @AuthUser() user: IJwtUserProfile,
   ): Promise<GetWorkspaceResDto[]> {
     return await this.workspaceService.getMyWorkspaces(user.userId);
+  }
+
+  @Get(':workspaceId/invitations/me')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: '워크스페이스 내 초대 목록 조회' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: '워크스페이스 조회 완료',
+    type: getInvitationResDto,
+    isArray: true,
+  })
+  async getMyInvitations(
+    @AuthUser() user: IJwtUserProfile,
+    @Param('workspaceId') workspaceId: string,
+  ): Promise<WorkspaceInvitation[]> {
+    return await this.wsInvitationService.getMyWorkspaceInvitations(
+      user.userId,
+      workspaceId,
+    );
   }
 
   @Post('invite/email')

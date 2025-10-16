@@ -25,7 +25,7 @@ export class WorkspaceInvitation extends BaseEntity {
   expiresAt: Date;
 
   @ManyToOne(() => WorkspaceMember, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'member_id' })
+  // @JoinColumn({ name: 'member_id' })
   member: Relation<WorkspaceMember>;
 
   @ManyToOne(() => Workspace, { onDelete: 'CASCADE' })
