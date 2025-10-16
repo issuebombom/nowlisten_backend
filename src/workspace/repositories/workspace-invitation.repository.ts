@@ -34,12 +34,16 @@ export class WorkspaceInvitationRepository {
   }
 
   updateWorkspaceInvitationStatus(id: string, status: InviteStatus) {
-    return this.repo.update(id, { status });
+    return this.repo.update(id, { status, respondedAt: new Date() });
   }
 
-  async findWorkspaceInvitationByToken(
-    token: string,
-  ): Promise<WorkspaceInvitation> {
+  findMyWorkspaceInvitations(memberId: string, workspaceId: string) {
+    return this.repo.find({
+      where: { member: { id: memberId }, workspace: { id: workspaceId } },
+    });
+  }
+
+  findWorkspaceInvitationByToken(token: string): Promise<WorkspaceInvitation> {
     return this.repo
       .createQueryBuilder('invitation')
       .select([

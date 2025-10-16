@@ -1,53 +1,5 @@
 # DEV NOTE
 
-## CORS 설정
-
-```typescript
-// CORS OPTIONS
-export const corsOptions = (env: string): CorsOptions => {
-  return {
-    origin: (requestOrigin, callback) => {
-      if (
-        !requestOrigin || // allow postman, same-origin etc.
-        originWhiteList.includes(requestOrigin) ||
-        checkLocalWhiteList(env, requestOrigin)
-      ) {
-        callback(null, true);
-      } else {
-        callback(new Error('Not allowed by CORS'));
-      }
-    },
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
-  };
-};
-
-const allowedOrigins = {
-  test: [],
-  prod: [],
-};
-
-const originWhiteList = [...allowedOrigins.test, ...allowedOrigins.prod];
-
-const checkLocalWhiteList = (env: string, requestOrigin: string) => {
-  return (
-    env === 'local' &&
-    (requestOrigin.includes('http://127.0.0.1') ||
-      requestOrigin.includes('http://localhost'))
-  );
-};
-```
-
-CORS(Cross-Origin Resource Sharing, 교차 출처 리소스 공유)는 웹 브라우저에서 다른 출처(origin)의 리소스를 요청할 수 있도록 허용해주는 보안 정책이다.  
-기본적으로 브라우저는 보안상의 이유로 다른 출처(origin)의 요청을 차단한다. enableCORS설정은 이 제한을 완화하기 위한 설정이다.  
-프론트엔드 허용을 위해서는 설정이 필수적이며 다른 출처(origin)의 리소스 요청 허용이 필요할 경우에 대비한다.  
-origin이 전달되지 않는 경우 (postman), whitelist에 포함된 출처, 로컬 환경에 대해서 허용한다.
-
-## Logging 설정(winston)
-
-main.ts의 getNestOptions()으로 winston 로깅 패키지를 설정  
-로컬, 테스트 환경에서만 colorize, pretty 출력이 적용되며, level은 최하위로 설정  
-prod 환경에서는 info 레벨로 설정, 시각적 꾸밈 요소를 제외
-
 ## ExceptionFilter
 
 ```typescript
@@ -314,16 +266,121 @@ DB에 timestamp로 저장하면 안될까?
 
 ## 구글(소셜) 로그인 시 access, refresh 토큰 프론트 전달 방법
 
-소셜 로그인 시 백엔드의 callback에서 프론트로 리다이렉트할 때 jwt 전달할 경우 url이 브라우저에 그대로 남으므로 세션id와 같은 임시토큰을 기반으로 nextjs 서버에서 jwt를 따로 요청하도록 한다.
+소셜 로그인 인증 후 callback에서 프론트로 리다이렉트할 때 jwt 전달하지 않고(보안 취약성) 세션id와 같은 임시토큰을 전달하여 이를 기반으로 nextjs 서버에서 jwt를 백엔드에 따로 요청하도록 한다.
 
-- callback에서 소셜 유저 정보를 기반으로 access, refresh를 생성한다.
-- 세션id 생성 후 메모리에 { access, refresh }를 key: value로 연결해 둔다. (redis, in-memory)
-- 프론트(nextjs) 서버로 세션id를 query에 담아 GET 요청한다.
-- 프론트는 받은 세션id를 body에 담아 jwt 획득을 위한 POST 요청을 서버로 보낸다.
-- 서버는 메모리 get으로 임시 토큰 검증(획득) 후 access, refresh를 응답한다.
-- 프론트는 받은 jwt를 토대로 유저 세션 쿠키를 등록한다.
+- callback에서 임시토큰 생성 후 메모리에 'social-login:임시토큰' = userId로 연결해 둔다. (redis, in-memory)
+- nextjs 서버로 토큰과 네임스페이스('social-login')를 query에 담아 GET 요청(리다이렉트)한다.
+- 프론트는 스트링쿼리로 받은 네임스페이스, 토큰을 body에 담아 jwt 획득을 위한 POST 요청을 서버로 보낸다.
+- 서버는 메모리 get으로 임시 토큰 검증(userId 획득) 후 access, refresh를 생성 후 응답한다.
+- 프론트는 받은 jwt를 쿠키로 등록한다.
 
-## Nextjs로 프론트 구현을 위한 간단 정리
+## 패스워드 관련
+
+- 패스워드 서비스를 따로 둠, 순환 참조 문제 해결
+- 패스워드 밸리데이션 데코레이터를 따로 커스텀 -> 패스워드 규칙을 나중에라도 변경 가능하도록
+- 패스워드 재설정 요청 시
+  1. 재설정 페이지 링크를 담은 메일을 보냄 (임시 토큰 포함, 메모리에 토큰 저장)
+  2. 이메일에서 링크 버튼 클릭 시 재설정 페이지 이동
+  3. 프론트에서 페이지 만료(보여줄지 말지) 검증을 위해 백엔드 요청 with 임시 토큰
+  4. 메모리 내 토큰 존재 유무로 만료 여부 파악
+  5. 통과 시 재설정 페이지 노출
+  6. 뉴 패스워드 작성 후 submit
+  7. 토큰 검증, 유저 검증 후 패스워드 변경 적용
+
+## 이메일 서비스 관련
+
+- nodemailer로 AWS SES 전송
+- SES의 전송 도메인 확인을 위해 테스트 도메인 구매
+- nestjs-modules/mailer 패키지에 대한 신뢰가 떨어져 nodemailer만 사용
+
+## 워크스페이스 생성 (이름 짓기)
+
+- 예약어 금지 설정 (커스텀 데코레이터 생성 후 validation)
+
+## TypeORM 옵션 설정을 활용한 커스텀 쿼리 로거(Logger) 작성
+
+TypeORM의 AbstractLogger 클래스를 상속하여 쿼리 로깅 방식을 커스텀
+
+- 기존: TypeORM 자체 로거 양식 적용
+- 변경: Nest 양식을 준수하는 로거 적용 (통일성) + 가독성 향상
+
+## 이메일 인증 코드 발송 및 검증 로직 관련
+
+회원가입 시 입력한 이메일 기반 '인증번호 발송' 및 '인증 확인' 기능 구현
+
+- 이메일 입력 후 '인증번호 발송' 클릭 시
+  - 이메일 exists 검증
+  - 임시 코드 생성 (6자리)
+  - redis에 'email-verify:이메일' : 임시 코드 형태로 저장 (TTL: 5분)
+  - 이메일 발송
+- 인증 번호 입력 후 '인증 확인' 버튼 클릭 시
+  - redis에서 'email-verify:이메일' Get하기 (만료확인 + 코드 일치)
+
+## 워크스페이스 초대
+
+이메일 기반 워크스페이스 초대 이메일 발송
+
+- Invitation 테이블 도입, 초대 정보를 데이터베이스 테이블로 관리한다.
+- 이메일 입력 후 초대 버튼 클릭 시 레코드 생성 및 이메일 발송
+  - 액티브 유저인가 + 초대 권한 검증
+  - 초대하려는 워크스페이스가 활성화 상태인가
+  - 초대 토큰 생성, 초대 일자 생성, 초대일자 기반 초대 만료일자 생성
+  - 초대 이메일 발송
+    - 이벤트 발행으로 이메일 전송
+
+## 워크스페이스 초대 링크 접속 및 승인
+
+- 초대 링크 접속 시 처리 흐름
+  - 초대 링크 만료일 및 상태 체크
+  - 초대 링크의 접속자가 초대 대상자가 맞는지 확인
+  - 초대한 워크스페이스가 현재 유효한지 확인
+  - 초대자의 자격 증명 확인
+  - 위 사항 모두 통과 시 링크 접속 가능
+- 초대 페이지에서 초대 승인 시 처리 흐름
+  - 워크스페이스 내에서 사용할 닉네임 받기
+  - 링크 접속 시 확인했던 검증 과정을 그대로 다시 거침
+  - 트랜잭션
+    - 초대 링크의 상태를 invited에서 accepted로 수정
+    - 워크스페이스 신규 멤버 등록
+
+## 멤버 권한 설정
+
+```typescript
+export enum RolePermission {
+  // 워크스페이스 관리
+  WORKSPACE_INVITE_MEMBER = 1 << 0, // 1
+  WORKSPACE_REMOVE_MEMBER = 1 << 1, // 2
+  WORKSPACE_MANAGE_SETTINGS = 1 << 2, // 4
+  WORKSPACE_MANAGE_BILLING = 1 << 3, // 8
+  WORKSPACE_MANAGE_APPS = 1 << 4, // 16
+  WORKSPACE_MANAGE_CHANNELS = 1 << 5, // 32
+  ...
+}
+
+export const WorkspaceRolePermission: Record<WorkspaceRole, number> = {
+  [WorkspaceRole.OWNER]:
+    RolePermission.WORKSPACE_ALL_PERMISSION |
+    RolePermission.CHANNEL_ALL_PERMISSION |
+    RolePermission.MESSAGE_ALL_PERMISSION,
+    ...
+}
+
+// 권한체크 예시
+const userGrade = WorkspaceRolePermission[WorkspaceRole.OWNER]
+const requiredRole =
+  RolePermission.WORKSPACE_INVITE_MEMBER |
+  RolePermission.WORKSPACE_REMOVE_MEMBER
+
+if ((userGrade & requiredRole) === requiredRole) {
+  console.log('권한 있음');
+}
+```
+
+- 비트 연산을 활용해 각 권한에 점수를 부여하고 요구되는 권한 중 하나라도 포함되지 않을 경우 통과되지 못하도록 설정
+- 빠르게 권한 추가 및 변경 시 있도록 구성함
+- 서비스 중 권한 변경 시 서버를 내려야 하는 상황이기 때문에 권한을 DB로 관리할 필요가 있어보임
+
+## 향후 Nextjs로 프론트 구현을 위한 간단 정리
 
 - Nextjs는 폴더가 곧 url이 된다.
 - page.js가 html을 구성하여 브라우저에 UI를 출력하는 역할을 한다.

@@ -4,6 +4,7 @@ import {
   Get,
   HttpStatus,
   Param,
+  Patch,
   Post,
   UseGuards,
 } from '@nestjs/common';
@@ -20,6 +21,7 @@ import { WorkspaceInvitationService } from '../services/workspace-invitation.ser
 import { WorkspaceInvitation } from '../entities/workspace-invitation.entity';
 import { GetInvitationInfoResDto } from '../dto/get-invitation-info-res.dto';
 import { ApproveInvitationReqDto } from '../dto/approve-invitation-req.dto';
+import { getInvitationResDto } from '../dto/get-invitation-res.dto';
 
 @Controller('ws')
 export class WorkspaceController {
@@ -55,6 +57,25 @@ export class WorkspaceController {
     @AuthUser() user: IJwtUserProfile,
   ): Promise<GetWorkspaceResDto[]> {
     return await this.workspaceService.getMyWorkspaces(user.userId);
+  }
+
+  @Get(':workspaceId/invitations/me')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: '워크스페이스 내 초대 목록 조회' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: '워크스페이스 조회 완료',
+    type: getInvitationResDto,
+    isArray: true,
+  })
+  async getMyInvitations(
+    @AuthUser() user: IJwtUserProfile,
+    @Param('workspaceId') workspaceId: string,
+  ): Promise<WorkspaceInvitation[]> {
+    return await this.wsInvitationService.getMyWorkspaceInvitations(
+      user.userId,
+      workspaceId,
+    );
   }
 
   @Post('invite/email')
@@ -95,7 +116,7 @@ export class WorkspaceController {
   }
 
   // 초대 수락(참여하기)
-  @Post('invite/:token/approve')
+  @Post('invite/:token/join/approve')
   @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: '초대 승인' })
   @ApiResponse({
@@ -112,6 +133,42 @@ export class WorkspaceController {
       user.email,
       invitationToken,
       approveInvitationReqDto.nickname,
+    );
+  }
+
+  // 초대 거절(참여 거절)
+  @Patch('invite/:token/join/reject')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: '초대 거절' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: '초대 거절 완료',
+  })
+  async rejectInvitation(
+    @AuthUser() user: IJwtUserProfile,
+    @Param('token') invitationToken: string,
+  ): Promise<void> {
+    await this.wsInvitationService.rejectInvitation(
+      user.email,
+      invitationToken,
+    );
+  }
+
+  // 초대 생성자의 취소
+  @Patch('invite/:token/cancel')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: '초대 취소' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: '초대 상태 취소 변경',
+  })
+  async cancelInvitation(
+    @Param('token') invitationToken: string,
+    @AuthUser() user: IJwtUserProfile,
+  ): Promise<void> {
+    await this.wsInvitationService.cancelInvitation(
+      user.userId,
+      invitationToken,
     );
   }
 }

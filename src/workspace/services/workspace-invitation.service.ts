@@ -78,6 +78,17 @@ export class WorkspaceInvitationService {
     );
   }
 
+  async getMyWorkspaceInvitations(
+    userId: string,
+    workspaceId: string,
+  ): Promise<WorkspaceInvitation[]> {
+    const member = await this.wsMemberRepo.findMemberByIds(userId, workspaceId);
+    return await this.wsInvitationRepo.findMyWorkspaceInvitations(
+      member.id,
+      workspaceId,
+    );
+  }
+
   async getWorkspaceInvitationByToken(
     email: string,
     token: string,
@@ -99,7 +110,7 @@ export class WorkspaceInvitationService {
     email: string,
     token: string,
     nickname: string,
-  ) {
+  ): Promise<void> {
     const invitation =
       await this.wsInvitationRepo.findWorkspaceInvitationByToken(token);
     const member = await this.wsMemberService.findMemberById(
@@ -114,6 +125,53 @@ export class WorkspaceInvitationService {
       invitation,
       nickname,
       userId,
+    );
+  }
+
+  async rejectInvitation(email: string, token: string): Promise<void> {
+    const invitation =
+      await this.wsInvitationRepo.findWorkspaceInvitationByToken(token);
+    const member = await this.wsMemberService.findMemberById(
+      invitation.member.id,
+    );
+
+    // 초대 검증
+    await this.validateInvitation(invitation, member.user.id, email);
+
+    await this.wsInvitationRepo.updateWorkspaceInvitationStatus(
+      invitation.id,
+      InviteStatus.REJECTED,
+    );
+  }
+
+  async cancelInvitation(userId: string, token: string): Promise<void> {
+    const invitation =
+      await this.wsInvitationRepo.findWorkspaceInvitationByToken(token);
+    const member = await this.wsMemberRepo.findMemberByIds(
+      userId,
+      invitation.workspace.id,
+    );
+
+    if (invitation.status !== InviteStatus.INVITED) {
+      throw new BusinessException(
+        ErrorDomain.Workspace,
+        `Invitation has already been processed: ${invitation.status}`,
+        `Invitation has  already been processed`,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    if (invitation.member.id !== member.id) {
+      throw new BusinessException(
+        ErrorDomain.Workspace,
+        `Invitation member id does not match: ${member.id}`,
+        `Invitation member does not match`,
+        HttpStatus.UNAUTHORIZED,
+      );
+    }
+    await this.wsInvitationRepo.updateWorkspaceInvitationStatus(
+      invitation.id,
+      InviteStatus.CANCELED,
     );
   }
 
