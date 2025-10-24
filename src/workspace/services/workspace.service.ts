@@ -15,12 +15,14 @@ import {
   RolePermission,
   WorkspaceRolePermission,
 } from 'src/common/utils/role-permission';
+import { WorkspaceMemberService } from './workspace-member.service';
 
 @Injectable()
 export class WorkspaceService {
   constructor(
     private readonly userService: UserService,
     private readonly workspaceRepo: WorkspaceRepository,
+    private readonly wsMemberService: WorkspaceMemberService,
     private readonly workspaceMemberRepo: WorkspaceMemberRepository,
   ) {}
 
@@ -80,11 +82,69 @@ export class WorkspaceService {
       throw new BusinessException(
         ErrorDomain.Workspace,
         `workspace not exists: ${id}`,
-        `id ${id} not exists`,
+        `workspace not exists`,
         HttpStatus.BAD_REQUEST,
       );
     }
     return workspace;
+  }
+
+  async updateWorkspaceName(name: string, workspaceId: string, userId: string) {
+    // 자격 겸증 (워크스페이스 설정 변경 권한)
+    await this.wsMemberService.hasRequiredRolePermission(
+      RolePermission.WORKSPACE_MANAGE_SETTINGS,
+      userId,
+      workspaceId,
+    );
+
+    // 이름 변경
+    this.workspaceRepo.updateWorkspaceById(workspaceId, { name });
+  }
+
+  async updateWorkspaceSlug(slug: string, workspaceId: string, userId: string) {
+    // 자격 겸증 (워크스페이스 설정 변경 권한)
+    await this.wsMemberService.hasRequiredRolePermission(
+      RolePermission.WORKSPACE_MANAGE_SETTINGS,
+      userId,
+      workspaceId,
+    );
+
+    // slug 변경 시도
+    /** NOTE: slug update에서 중복값 검사를 쿼리에 맡기는 이유
+     * slug 필드는 unique 등록이 되어있어 인덱스 추가가 되어있음
+     * 중복검사 쿼리를 따로 날릴 필요없이 update 쿼리 과정에서 중복검사하는걸 캐치한다
+     */
+    try {
+      await this.workspaceRepo.updateWorkspaceById(workspaceId, { slug });
+    } catch (error) {
+      // 중복값 적용 시 에러
+      if (error.code === '23505') {
+        throw new BusinessException(
+          ErrorDomain.Workspace,
+          `this slug already exists: ${slug}`,
+          `this slug already exists`,
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+    }
+  }
+
+  async deleteWorkspaceById(
+    userId: string,
+    workspaceId: string,
+  ): Promise<void> {
+    // ws ID 존재 유무 확인
+    await this.getWorkspaceById(workspaceId);
+
+    // 자격 증명 (해당 워크스페이스의 삭제 자격이 있는가?)
+    await this.wsMemberService.hasRequiredRolePermission(
+      RolePermission.WORKSPACE_MANAGE_SETTINGS,
+      userId,
+      workspaceId,
+    );
+
+    // 삭제
+    this.workspaceRepo.deleteWorkspaceById(workspaceId);
   }
 
   private createSlug(workspaceName: string) {

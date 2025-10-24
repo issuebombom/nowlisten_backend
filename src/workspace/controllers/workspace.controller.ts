@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpStatus,
   Param,
@@ -22,6 +23,8 @@ import { WorkspaceInvitation } from '../entities/workspace-invitation.entity';
 import { GetInvitationInfoResDto } from '../dto/get-invitation-info-res.dto';
 import { ApproveInvitationReqDto } from '../dto/approve-invitation-req.dto';
 import { getInvitationResDto } from '../dto/get-invitation-res.dto';
+import { UpdateWorkspaceNameReqDto } from '../dto/update-workspace-name-req.dto';
+import { UpdateWorkspaceSlugReqDto } from '../dto/update-workspace-slug-req.dto';
 
 @Controller('ws')
 export class WorkspaceController {
@@ -57,6 +60,55 @@ export class WorkspaceController {
     @AuthUser() user: IJwtUserProfile,
   ): Promise<GetWorkspaceResDto[]> {
     return await this.workspaceService.getMyWorkspaces(user.userId);
+  }
+
+  @Patch(':workspaceId/name')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: '워크스페이스 이름 변경' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: '워크스페이스 이름 변경 완료',
+  })
+  async updateWorkspaceName(
+    @Param('workspaceId') workspaceId: string,
+    @AuthUser() user: IJwtUserProfile,
+    @Body() updateworkspaceNameReqDto: UpdateWorkspaceNameReqDto,
+  ): Promise<void> {
+    await this.workspaceService.updateWorkspaceName(
+      updateworkspaceNameReqDto.workspaceName,
+      workspaceId,
+      user.userId,
+    );
+  }
+
+  // TODO: 진행 중
+  @Patch(':workspaceId/slug')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: '워크스페이스 슬러그 변경' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: '워크스페이스 슬러그 변경 완료',
+  })
+  async updateWorkspaceSlug(
+    @Param('workspaceId') workspaceId: string,
+    @AuthUser() user: IJwtUserProfile,
+    @Body() updateworkspaceSlugReqDto: UpdateWorkspaceSlugReqDto,
+  ): Promise<void> {
+    await this.workspaceService.updateWorkspaceSlug(
+      updateworkspaceSlugReqDto.slug,
+      workspaceId,
+      user.userId,
+    );
+  }
+
+  @Delete(':workspaceId')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: '지정 워크스페이스 삭제' })
+  async deleteWorkspace(
+    @Param('workspaceId') workspaceId: string,
+    @AuthUser() user: IJwtUserProfile,
+  ): Promise<void> {
+    await this.workspaceService.deleteWorkspaceById(user.userId, workspaceId);
   }
 
   @Get(':workspaceId/invitations/me')

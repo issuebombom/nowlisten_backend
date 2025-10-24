@@ -30,6 +30,10 @@ export class WorkspaceMemberService {
     return member;
   }
 
+  /**
+   * ! NOTE: 워크스페이스 접근 권한 확인 관련 쿼리 시 성능 저하 우려
+   * member 테이블에서 userId와 workspaceId에 대한 멀티인덱스 추가 고려
+   */
   async findMemberByIds(userId: string, workspaceId: string) {
     const member = await this.workspaceMemberRepo.findMemberByIds(
       userId,

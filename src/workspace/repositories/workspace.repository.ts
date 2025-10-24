@@ -20,4 +20,12 @@ export class WorkspaceRepository {
   findWorkspaceById(id: string): Promise<Workspace> {
     return this.repo.findOneBy({ id });
   }
+
+  updateWorkspaceById(id: string, options: Partial<Workspace>) {
+    return this.repo.update(id, options);
+  }
+
+  deleteWorkspaceById(id: string) {
+    return this.repo.delete(id);
+  }
 }
