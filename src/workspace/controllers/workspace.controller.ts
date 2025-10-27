@@ -7,6 +7,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
@@ -25,11 +26,17 @@ import { ApproveInvitationReqDto } from '../dto/approve-invitation-req.dto';
 import { getInvitationResDto } from '../dto/get-invitation-res.dto';
 import { UpdateWorkspaceNameReqDto } from '../dto/update-workspace-name-req.dto';
 import { UpdateWorkspaceSlugReqDto } from '../dto/update-workspace-slug-req.dto';
+import { UpdateWorkspaceStatusReqDto } from '../dto/update-workspace-status.dto';
+import { GetMembersReqDto } from '../dto/get-members-req.dto';
+import { WorkspaceMemberService } from '../services/workspace-member.service';
+import { ConfigService } from '@nestjs/config';
 
 @Controller('ws')
 export class WorkspaceController {
   constructor(
+    private readonly configService: ConfigService,
     private readonly workspaceService: WorkspaceService,
+    private readonly wsMemberService: WorkspaceMemberService,
     private readonly wsInvitationService: WorkspaceInvitationService,
   ) {}
 
@@ -81,7 +88,6 @@ export class WorkspaceController {
     );
   }
 
-  // TODO: 진행 중
   @Patch(':workspaceId/slug')
   @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: '워크스페이스 슬러그 변경' })
@@ -96,6 +102,25 @@ export class WorkspaceController {
   ): Promise<void> {
     await this.workspaceService.updateWorkspaceSlug(
       updateworkspaceSlugReqDto.slug,
+      workspaceId,
+      user.userId,
+    );
+  }
+
+  @Patch(':workspaceId/status')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: '워크스페이스 상태 변경' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: '워크스페이스 상태 변경 완료',
+  })
+  async updateWorkspaceStatus(
+    @Param('workspaceId') workspaceId: string,
+    @AuthUser() user: IJwtUserProfile,
+    @Body() updateWorkspaceStatusReqDto: UpdateWorkspaceStatusReqDto,
+  ): Promise<void> {
+    await this.workspaceService.updateWorkspaceStatus(
+      updateWorkspaceStatusReqDto.status,
       workspaceId,
       user.userId,
     );
@@ -221,6 +246,31 @@ export class WorkspaceController {
     await this.wsInvitationService.cancelInvitation(
       user.userId,
       invitationToken,
+    );
+  }
+
+  // 워크스페이스 맴버 조회
+  @Get(':workspaceId/members')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: '워크스페이스 맴버 조회' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: '워크스페이스 맴버 리스트 전달',
+  })
+  async getWorkspaceMembers(
+    @AuthUser() user: IJwtUserProfile,
+    @Param('workspaceId') workspaceId: string,
+    @Query() getMembersReqDto: GetMembersReqDto,
+  ) {
+    const MAX_LIMIT = parseInt(
+      this.configService.get<string>('GET_WORKSPACE_MEMBERS_LIMIT'),
+    );
+    return await this.wsMemberService.getWorkspaceMembers(
+      user.userId,
+      workspaceId,
+      getMembersReqDto.limit <= MAX_LIMIT ? getMembersReqDto.limit : MAX_LIMIT, // 디폴트 제한 20
+      getMembersReqDto.isNext,
+      getMembersReqDto.lastMemberId,
     );
   }
 }

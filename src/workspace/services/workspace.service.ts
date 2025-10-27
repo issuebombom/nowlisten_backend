@@ -129,6 +129,21 @@ export class WorkspaceService {
     }
   }
 
+  async updateWorkspaceStatus(
+    status: WorkspaceStatus,
+    workspaceId: string,
+    userId: string,
+  ) {
+    // 자격 겸증 (워크스페이스 설정 변경 권한)
+    await this.wsMemberService.hasRequiredRolePermission(
+      RolePermission.WORKSPACE_MANAGE_SETTINGS,
+      userId,
+      workspaceId,
+    );
+
+    this.workspaceRepo.updateWorkspaceById(workspaceId, { status });
+  }
+
   async deleteWorkspaceById(
     userId: string,
     workspaceId: string,

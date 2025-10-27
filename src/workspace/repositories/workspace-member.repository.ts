@@ -33,6 +33,21 @@ export class WorkspaceMemberRepository {
     return this.repo.save(member);
   }
 
+  async getMembersByWsId(
+    workspaceId: string,
+    limit: number,
+    isNext?: boolean,
+    lastMemberId?: string,
+  ) {
+    return await this.repo
+      .createQueryBuilder('member')
+      .where('member.workspace.id = :workspaceId', { workspaceId })
+      .andWhere(isNext ? 'member.id > :lastMemberId' : '1=1', { lastMemberId })
+      .orderBy('member.id', 'ASC')
+      .limit(limit + 1)
+      .getMany();
+  }
+
   // ! NOTE: 이게 멤버 레포에 있어야 하나? (유저 id로 접근하니까 타당함?)
   async findWorkspaceByUserId(userId: string): Promise<GetWorkspaceResDto[]> {
     const rows = await this.repo.query(
