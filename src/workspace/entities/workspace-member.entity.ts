@@ -21,7 +21,7 @@ export class WorkspaceMember extends BaseEntity {
   @Column({ type: 'timestamptz' })
   joinedAt: Date;
 
-  @Column({ type: 'boolean', default: true })
+  @Column({ type: 'boolean', default: true, select: false })
   isReceiveAlert: boolean;
 
   @OneToMany(() => WorkspaceInvitation, (invitation) => invitation.member)

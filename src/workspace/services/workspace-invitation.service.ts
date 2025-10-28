@@ -35,7 +35,7 @@ export class WorkspaceInvitationService {
     workspaceId: string,
   ) {
     // 액티브 유저인가 + 권한이 있나
-    const member = await this.wsMemberService.hasRequiredRolePermission(
+    const inviterMember = await this.wsMemberService.hasRequiredRolePermission(
       RolePermission.WORKSPACE_INVITE_MEMBER,
       inviterUserId,
       workspaceId,
@@ -51,6 +51,21 @@ export class WorkspaceInvitationService {
       );
     }
 
+    // 초대자가 이미 워크스페이스 멤버인가
+    const inviteeMember = await this.wsMemberRepo.findMemberByEmail(
+      workspaceId,
+      inviteeEmail,
+    );
+    console.log(inviteeMember);
+    if (inviteeMember) {
+      throw new BusinessException(
+        ErrorDomain.Workspace,
+        `this email(${inviteeEmail}) is already in workspace(${workspaceId})`,
+        `this email is already in workspace`,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
     // 토큰 생성
     const inviteToken = genCryptoId(32);
     // 초대 날짜 생성
@@ -61,7 +76,7 @@ export class WorkspaceInvitationService {
 
     // 이미 초대한 이력이 있을 경우 이미 생성된 레코드를 재사용
     const alreadyInvited = await this.isAlreadyInvited(
-      member.id,
+      inviterMember.id,
       workspaceId,
       inviteeEmail,
     );
@@ -86,7 +101,7 @@ export class WorkspaceInvitationService {
         invitedAt,
         inviteToken,
         expiresAt,
-        member.id,
+        inviterMember.id,
         workspaceId,
       );
     }
@@ -96,7 +111,7 @@ export class WorkspaceInvitationService {
       new WorkspaceCreatedInvitationEvent(
         inviteeEmail,
         workspace.name,
-        member.name,
+        inviterMember.name,
         inviteToken,
       ),
     );

@@ -38,11 +38,13 @@ export class WorkspaceMemberRepository {
     limit: number,
     isNext?: boolean,
     lastMemberId?: string,
-  ) {
+  ): Promise<WorkspaceMember[]> {
     return await this.repo
       .createQueryBuilder('member')
+      .select(['member', 'user.id', 'user.email'])
       .where('member.workspace.id = :workspaceId', { workspaceId })
       .andWhere(isNext ? 'member.id > :lastMemberId' : '1=1', { lastMemberId })
+      .leftJoin('member.user', 'user')
       .orderBy('member.id', 'ASC')
       .limit(limit + 1)
       .getMany();
@@ -83,5 +85,18 @@ export class WorkspaceMemberRepository {
       user: { id: userId },
       workspace: { id: workspaceId },
     });
+  }
+
+  async findMemberByEmail(
+    workspaceId: string,
+    email: string,
+  ): Promise<WorkspaceMember> {
+    return await this.repo
+      .createQueryBuilder('member')
+      .select(['member', 'user.id', 'user.email'])
+      .leftJoin('member.user', 'user')
+      .where('member.workspace.id = :workspaceId', { workspaceId })
+      .andWhere('user.email = :email', { email })
+      .getOne();
   }
 }

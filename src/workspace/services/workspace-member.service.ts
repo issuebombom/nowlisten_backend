@@ -25,7 +25,7 @@ export class WorkspaceMemberService {
     // 워크스페이스 멤버 검증
     await this.findMemberByIds(userId, workspaceId);
 
-    return await this.getMembersByWsId(
+    return await this.findMembersByWsId(
       workspaceId,
       limit,
       isNext,
@@ -33,7 +33,7 @@ export class WorkspaceMemberService {
     );
   }
 
-  async getMembersByWsId(
+  async findMembersByWsId(
     workspaceId: string,
     limit: number,
     isNext?: boolean,
@@ -73,6 +73,9 @@ export class WorkspaceMemberService {
   /**
    * ! NOTE: 워크스페이스 접근 권한 확인 관련 쿼리 시 성능 저하 우려
    * member 테이블에서 userId와 workspaceId에 대한 멀티인덱스 추가 고려
+   * -> workspaceId만 인덱스 추가
+   *    - 워크스페이스 내 최대 멤버수는 많아야 수 천 이하 정도 될 것으로 예상
+   *    - ws id로 접근 후 수 천을 풀 스캔해도 성능에 문제 없을 것으로 예상
    */
   async findMemberByIds(userId: string, workspaceId: string) {
     const member = await this.workspaceMemberRepo.findMemberByIds(
@@ -85,6 +88,27 @@ export class WorkspaceMemberService {
         ErrorDomain.Workspace,
         `id: ${userId} is not a member of this workspace(${workspaceId})`,
         `this user is not a member of this workspace`,
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
+    return member;
+  }
+
+  async findMemberByEmail(
+    workspaceId: string,
+    email: string,
+  ): Promise<WorkspaceMember> {
+    const member = await this.workspaceMemberRepo.findMemberByEmail(
+      workspaceId,
+      email,
+    );
+
+    if (!member) {
+      throw new BusinessException(
+        ErrorDomain.Workspace,
+        `email: ${email} is not a member of this workspacce(${workspaceId})`,
+        `this email is not a member of this workspace`,
         HttpStatus.NOT_FOUND,
       );
     }
