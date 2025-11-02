@@ -17,6 +17,7 @@ import { Transactional } from 'typeorm-transactional';
 import { WorkspaceMemberRepository } from '../repositories/workspace-member.repository';
 import { WorkspaceRole } from 'src/common/types/workspace-role.type';
 import { MemberStatus } from 'src/common/types/member-status.type';
+import { omit } from 'lodash';
 
 @Injectable()
 export class WorkspaceInvitationService {
@@ -56,7 +57,6 @@ export class WorkspaceInvitationService {
       workspaceId,
       inviteeEmail,
     );
-    console.log(inviteeMember);
     if (inviteeMember) {
       throw new BusinessException(
         ErrorDomain.Workspace,
@@ -88,8 +88,7 @@ export class WorkspaceInvitationService {
       alreadyInvited.token = inviteToken;
       alreadyInvited.expiresAt = expiresAt;
 
-      const { createdAt, updatedAt, ...editInvitation } = alreadyInvited;
-
+      const editInvitation = omit(alreadyInvited, ['createdAt', 'updatedAt']);
       await this.wsInvitationRepo.updateWorkspaceInvitation(
         alreadyInvited.id,
         editInvitation,
