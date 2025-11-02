@@ -9,6 +9,8 @@ import { MemberStatus } from 'src/common/types/member-status.type';
 import { BusinessException } from 'src/exception/business-exception';
 import { ErrorDomain } from 'src/common/types/error-domain.type';
 import { WorkspaceMember } from '../entities/workspace-member.entity';
+import { WorkspaceRole } from 'src/common/types/workspace-role.type';
+import { GetMembersResDto } from '../dto/get-members-res.dto';
 
 @Injectable()
 export class WorkspaceMemberService {
@@ -22,7 +24,7 @@ export class WorkspaceMemberService {
     limit: number,
     isNext?: boolean,
     lastMemberId?: string,
-  ) {
+  ): Promise<GetMembersResDto> {
     // 워크스페이스 멤버 검증
     await this.findMemberByIds(userId, workspaceId);
 
@@ -58,6 +60,24 @@ export class WorkspaceMemberService {
           ? members.at(-1).id // next는 없지만 쿼리 결과가 있을 경우
           : null, // 쿼리 결과가 없을 경우
     };
+  }
+
+  async updateWorkspaceMemberRole(
+    userId: string,
+    workspaceId: string,
+    targetMemberId: string,
+    changeRole: WorkspaceRole,
+  ) {
+    // 멤버 역할 수정에 대한 권한 유무 체크
+    await this.hasRequiredRolePermission(
+      RolePermission.WORKSPACE_MANAGE_SETTINGS,
+      userId,
+      workspaceId,
+    );
+
+    await this.workspaceMemberRepo.updateMemberById(targetMemberId, {
+      role: changeRole,
+    });
   }
 
   async findMemberById(memberId: string) {

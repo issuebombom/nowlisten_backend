@@ -26,10 +26,12 @@ import { ApproveInvitationReqDto } from '../dto/approve-invitation-req.dto';
 import { getInvitationResDto } from '../dto/get-invitation-res.dto';
 import { UpdateWorkspaceNameReqDto } from '../dto/update-workspace-name-req.dto';
 import { UpdateWorkspaceSlugReqDto } from '../dto/update-workspace-slug-req.dto';
-import { UpdateWorkspaceStatusReqDto } from '../dto/update-workspace-status.dto';
+import { UpdateWorkspaceStatusReqDto } from '../dto/update-workspace-status-req.dto';
 import { GetMembersReqDto } from '../dto/get-members-req.dto';
 import { WorkspaceMemberService } from '../services/workspace-member.service';
 import { ConfigService } from '@nestjs/config';
+import { GetMembersResDto } from '../dto/get-members-res.dto';
+import { UpdateWorkspaceRoleReqDto } from '../dto/update-workspace-role-req.dto';
 
 @Controller('ws')
 export class WorkspaceController {
@@ -61,7 +63,9 @@ export class WorkspaceController {
   @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: '내 워크스페이스 조회' })
   @ApiResponse({
+    status: HttpStatus.OK,
     description: '워크스페이스 조회 완료',
+    type: GetWorkspaceResDto,
   })
   async getMyWorkspaces(
     @AuthUser() user: IJwtUserProfile,
@@ -256,12 +260,13 @@ export class WorkspaceController {
   @ApiResponse({
     status: HttpStatus.OK,
     description: '워크스페이스 맴버 리스트 전달',
+    type: GetMembersResDto,
   })
   async getWorkspaceMembers(
     @AuthUser() user: IJwtUserProfile,
     @Param('workspaceId') workspaceId: string,
     @Query() getMembersReqDto: GetMembersReqDto,
-  ) {
+  ): Promise<GetMembersResDto> {
     const MAX_LIMIT = parseInt(
       this.configService.get<string>('GET_WORKSPACE_MEMBERS_LIMIT'),
     );
@@ -271,6 +276,27 @@ export class WorkspaceController {
       getMembersReqDto.limit <= MAX_LIMIT ? getMembersReqDto.limit : MAX_LIMIT, // 디폴트 제한 20
       getMembersReqDto.isNext,
       getMembersReqDto.lastMemberId,
+    );
+  }
+
+  @Patch(':workspaceId/members/:memberId/role')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: '워크스페이스 멤버 권한 변경' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: '멤버 권한 변경 완료',
+  })
+  async updateWorkspaceMemberRole(
+    @AuthUser() user: IJwtUserProfile,
+    @Param('workspaceId') workspaceId: string,
+    @Param('memberId') targetMemberId: string,
+    @Body() updateWorkspaceRoleReqDto: UpdateWorkspaceRoleReqDto,
+  ): Promise<void> {
+    await this.wsMemberService.updateWorkspaceMemberRole(
+      user.userId,
+      workspaceId,
+      targetMemberId,
+      updateWorkspaceRoleReqDto.role,
     );
   }
 }
