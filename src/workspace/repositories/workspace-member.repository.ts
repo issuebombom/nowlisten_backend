@@ -39,15 +39,19 @@ export class WorkspaceMemberRepository {
     isNext?: boolean,
     lastMemberId?: string,
   ): Promise<WorkspaceMember[]> {
-    return await this.repo
+    const query = this.repo
       .createQueryBuilder('member')
       .select(['member', 'user.id', 'user.email'])
       .where('member.workspace.id = :workspaceId', { workspaceId })
-      .andWhere(isNext ? 'member.id > :lastMemberId' : '1=1', { lastMemberId })
       .leftJoin('member.user', 'user')
       .orderBy('member.id', 'ASC')
-      .limit(limit + 1)
-      .getMany();
+      .limit(limit + 1);
+
+    if (isNext && lastMemberId) {
+      query.andWhere('member.id > :lastMemberId', { lastMemberId });
+    }
+
+    return await query.getMany();
   }
 
   // ! NOTE: 이게 멤버 레포에 있어야 하나? (유저 id로 접근하니까 타당함?)
