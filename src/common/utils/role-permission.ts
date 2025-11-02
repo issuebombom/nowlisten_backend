@@ -94,5 +94,5 @@ export function hasChannelPermission(
   userRole: ChannelRole,
   requiredRole: RolePermission,
 ): boolean {
-  return (ChannelRolePermission[userRole] & requiredRole) == requiredRole;
+  return (ChannelRolePermission[userRole] & requiredRole) === requiredRole;
 }
