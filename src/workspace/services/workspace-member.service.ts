@@ -9,6 +9,7 @@ import { MemberStatus } from 'src/common/types/member-status.type';
 import { BusinessException } from 'src/exception/business-exception';
 import { ErrorDomain } from 'src/common/types/error-domain.type';
 import { WorkspaceMember } from '../entities/workspace-member.entity';
+
 @Injectable()
 export class WorkspaceMemberService {
   constructor(
@@ -33,7 +34,7 @@ export class WorkspaceMemberService {
     );
   }
 
-  async findMembersByWsId(
+  private async findMembersByWsId(
     workspaceId: string,
     limit: number,
     isNext?: boolean,
@@ -51,7 +52,11 @@ export class WorkspaceMemberService {
     return {
       result: isNext ? members.slice(0, -1) : members,
       isNext,
-      lastMemberId: isNext ? members.at(-2).id : members.at(-1).id,
+      lastMemberId: isNext
+        ? members.at(-2).id
+        : members.length !== 0
+          ? members.at(-1).id // next는 없지만 쿼리 결과가 있을 경우
+          : null, // 쿼리 결과가 없을 경우
     };
   }
 
