@@ -1,8 +1,10 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, PickType } from '@nestjs/swagger';
 import { WorkspaceRole } from 'src/common/types/workspace-role.type';
 import { MemberStatus } from 'src/common/types/member-status.type';
+import { User } from 'src/auth/entities/user.entity';
+import { WorkspaceMember } from '../entities/workspace-member.entity';
 
-class UserDto {
+class UserDto extends PickType(User, ['id', 'email'] as const) {
   @ApiProperty({ description: '유저 ID' })
   id: string;
 
@@ -10,7 +12,15 @@ class UserDto {
   email: string;
 }
 
-class MemberDto {
+class MemberDto extends PickType(WorkspaceMember, [
+  'id',
+  'createdAt',
+  'updatedAt',
+  'name',
+  'role',
+  'status',
+  'joinedAt',
+]) {
   @ApiProperty({ description: '워크스페이스 멤버 ID' })
   id: string;
 
