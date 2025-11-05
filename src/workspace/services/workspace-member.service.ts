@@ -11,6 +11,7 @@ import { ErrorDomain } from 'src/common/types/error-domain.type';
 import { WorkspaceMember } from '../entities/workspace-member.entity';
 import { WorkspaceRole } from 'src/common/types/workspace-role.type';
 import { GetMembersResDto } from '../dto/get-members-res.dto';
+import RoleLevel from 'src/common/utils/role-level';
 
 @Injectable()
 export class WorkspaceMemberService {
@@ -83,19 +84,32 @@ export class WorkspaceMemberService {
   async deleteWorkspaceMember(
     userId: string,
     workspaceId: string,
-    memberId: string,
+    targetMemberId: string,
   ): Promise<void> {
-    await this.hasRequiredRolePermission(
+    const member = await this.hasRequiredRolePermission(
       RolePermission.WORKSPACE_REMOVE_MEMBER,
       userId,
       workspaceId,
     );
 
-    // 멤버 존재 유무 확인
-    await this.findMemberById(memberId);
+    // 본인이 스스로 탈퇴하려는 케이스가 아니라면
+    if (member.id !== targetMemberId) {
+      // 멤버 존재 유무 확인
+      const targetMember = await this.findMemberById(targetMemberId);
 
-    // 멤버 삭제
-    await this.workspaceMemberRepo.deleteWorkspaceMember(memberId);
+      // 멤버 간 역할 등급 비교 (타겟 멤버의 등급이 집행자보다 낮아야 함)
+      if (RoleLevel.isLowerThan(member.role, targetMember.role)) {
+        throw new BusinessException(
+          ErrorDomain.Workspace,
+          `Target member has equal or higher role: ${targetMember.role}`,
+          `Target member has equal or higher role`,
+          HttpStatus.FORBIDDEN,
+        );
+      }
+    }
+
+    // 멤버 삭제 (본인 스스로 탈퇴하려는 케이스는 바로 통과)
+    await this.workspaceMemberRepo.deleteWorkspaceMember(targetMemberId);
   }
 
   async findMemberById(memberId: string) {
