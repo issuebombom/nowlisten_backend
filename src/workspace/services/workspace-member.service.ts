@@ -80,6 +80,24 @@ export class WorkspaceMemberService {
     });
   }
 
+  async deleteWorkspaceMember(
+    userId: string,
+    workspaceId: string,
+    memberId: string,
+  ): Promise<void> {
+    await this.hasRequiredRolePermission(
+      RolePermission.WORKSPACE_REMOVE_MEMBER,
+      userId,
+      workspaceId,
+    );
+
+    // 멤버 존재 유무 확인
+    await this.findMemberById(memberId);
+
+    // 멤버 삭제
+    await this.workspaceMemberRepo.deleteWorkspaceMember(memberId);
+  }
+
   async findMemberById(memberId: string) {
     const member = await this.workspaceMemberRepo.findMemberById(memberId);
 

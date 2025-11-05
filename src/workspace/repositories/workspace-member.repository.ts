@@ -87,4 +87,8 @@ export class WorkspaceMemberRepository {
   updateMemberById(memberId: string, options: Partial<WorkspaceMember>) {
     return this.repo.update(memberId, options);
   }
+
+  deleteWorkspaceMember(memberId: string) {
+    return this.repo.delete(memberId);
+  }
 }

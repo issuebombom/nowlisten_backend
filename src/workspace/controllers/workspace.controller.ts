@@ -299,4 +299,23 @@ export class WorkspaceController {
       updateWorkspaceRoleReqDto.role,
     );
   }
+
+  @Delete(':workspaceId/members/:memberId')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: '관리자의 워크스페이스 특정 멤버 삭제 (지정 탈퇴)' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: '지정 멤버 탈퇴 완료',
+  })
+  async deleteWorkspaceMember(
+    @AuthUser() user: IJwtUserProfile,
+    @Param('workspaceId') workspaceId: string,
+    @Param('memberId') memberId: string,
+  ) {
+    await this.wsMemberService.deleteWorkspaceMember(
+      user.userId,
+      workspaceId,
+      memberId,
+    );
+  }
 }
