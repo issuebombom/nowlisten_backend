@@ -70,11 +70,33 @@ export class WorkspaceMemberService {
     changeRole: WorkspaceRole,
   ) {
     // 멤버 역할 수정에 대한 권한 유무 체크
-    await this.hasRequiredRolePermission(
-      RolePermission.WORKSPACE_MANAGE_SETTINGS,
+    const member = await this.hasRequiredRolePermission(
+      RolePermission.WORKSPACE_MANAGE_MEMBER,
       userId,
       workspaceId,
     );
+
+    // 본인이 자기자신의 역할 변경할 수 없음
+    if (member.id === targetMemberId) {
+      throw new BusinessException(
+        ErrorDomain.Workspace,
+        `Not allowed to change your own role`,
+        `Not allowed to change your own role`,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    // 타겟 멤버 존재 유무 확인
+    const targetMember = await this.findMemberById(targetMemberId);
+
+    // 멤버 간 역할 등급 비교 (집행자가 타겟 멤버보다 등급이 낮으면 안됨)
+    if (RoleLevel.isLowerThan(member.role, targetMember.role)) {
+      throw new BusinessException(
+        ErrorDomain.Workspace,
+        `Target member has equal or higher role: ${targetMember.role}`,
+        `Target member has equal or higher role`,
+        HttpStatus.FORBIDDEN,
+      );
+    }
 
     await this.workspaceMemberRepo.updateMemberById(targetMemberId, {
       role: changeRole,
