@@ -69,37 +69,25 @@ export class WorkspaceMemberService {
     targetMemberId: string,
     changeRole: WorkspaceRole,
   ) {
-    // 멤버 역할 수정에 대한 권한 유무 체크
-    const member = await this.hasRequiredRolePermission(
-      RolePermission.WORKSPACE_MANAGE_MEMBER,
-      userId,
-      workspaceId,
-    );
-
-    // 본인이 자기자신의 역할 변경할 수 없음
-    if (member.id === targetMemberId) {
-      throw new BusinessException(
-        ErrorDomain.Workspace,
-        `Not allowed to change your own role`,
-        `Not allowed to change your own role`,
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-    // 타겟 멤버 존재 유무 확인
-    const targetMember = await this.findMemberById(targetMemberId);
-
-    // 멤버 간 역할 등급 비교 (집행자가 타겟 멤버보다 등급이 낮으면 안됨)
-    if (RoleLevel.isLowerThan(member.role, targetMember.role)) {
-      throw new BusinessException(
-        ErrorDomain.Workspace,
-        `Target member has equal or higher role: ${targetMember.role}`,
-        `Target member has equal or higher role`,
-        HttpStatus.FORBIDDEN,
-      );
-    }
+    // 타 멤버의 권한 관련 수정 가능 유무 체크
+    await this.hasPermissionToEditMember(userId, workspaceId, targetMemberId);
 
     await this.workspaceMemberRepo.updateMemberById(targetMemberId, {
       role: changeRole,
+    });
+  }
+
+  async updateWokrspaceMemberStatus(
+    userId: string,
+    workspaceId: string,
+    targetMemberId: string,
+    changeStatus: MemberStatus,
+  ) {
+    // 타 멤버의 권한 관련 수정 가능 유무 체크
+    await this.hasPermissionToEditMember(userId, workspaceId, targetMemberId);
+
+    await this.workspaceMemberRepo.updateMemberById(targetMemberId, {
+      status: changeStatus,
     });
   }
 
@@ -222,5 +210,41 @@ export class WorkspaceMemberService {
       );
     }
     return member;
+  }
+
+  // 타 멤버의 Info가 아닌 권한에 대한 변경 시 적용(멤버 활성화유무, 등급 변경 등)
+  private async hasPermissionToEditMember(
+    userId: string,
+    workspaceId: string,
+    targetMemberId: string,
+  ) {
+    // 타 멤버 속성 편집에 대한 권한 유무 체크
+    const member = await this.hasRequiredRolePermission(
+      RolePermission.WORKSPACE_MANAGE_MEMBER,
+      userId,
+      workspaceId,
+    );
+
+    // 본인 스스로의 상태를 변경할 수 없음
+    if (member.id === targetMemberId) {
+      throw new BusinessException(
+        ErrorDomain.Workspace,
+        `Not allowed to change your own state`,
+        `Not allowed to change your own state`,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    // 타겟 멤버 존재 유무 확인
+    const targetMember = await this.findMemberById(targetMemberId);
+
+    // 멤버 간 역할 등급 비교 (집행자가 타겟 멤버보다 등급이 낮으면 안됨)
+    if (RoleLevel.isLowerThan(member.role, targetMember.role)) {
+      throw new BusinessException(
+        ErrorDomain.Workspace,
+        `Target member has equal or higher role: ${targetMember.role}`,
+        `Target member has equal or higher role`,
+        HttpStatus.FORBIDDEN,
+      );
+    }
   }
 }

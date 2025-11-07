@@ -32,6 +32,7 @@ import { WorkspaceMemberService } from '../services/workspace-member.service';
 import { ConfigService } from '@nestjs/config';
 import { GetMembersResDto } from '../dto/get-members-res.dto';
 import { UpdateWorkspaceRoleReqDto } from '../dto/update-workspace-role-req.dto';
+import { UpdateMemberStatusReqDto } from '../dto/update-member-status-req.dto';
 
 @Controller('ws')
 export class WorkspaceController {
@@ -297,6 +298,27 @@ export class WorkspaceController {
       workspaceId,
       targetMemberId,
       updateWorkspaceRoleReqDto.role,
+    );
+  }
+
+  @Patch(':workspaceId/members/:memberId/status')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: '워크스페이스 멤버 상태 변경 (active/inactive)' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: '멤버 상태 변경 완료',
+  })
+  async updateWorkspaceMemberStatus(
+    @AuthUser() user: IJwtUserProfile,
+    @Param('workspaceId') workspaceId: string,
+    @Param('memberId') targetMemberId: string,
+    @Body() updateMemberStatusReqDto: UpdateMemberStatusReqDto,
+  ): Promise<void> {
+    await this.wsMemberService.updateWokrspaceMemberStatus(
+      user.userId,
+      workspaceId,
+      targetMemberId,
+      updateMemberStatusReqDto.status,
     );
   }
 
