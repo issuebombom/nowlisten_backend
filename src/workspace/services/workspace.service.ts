@@ -144,11 +144,21 @@ export class WorkspaceService {
     await this.getWorkspaceById(workspaceId);
 
     // 자격 증명 (해당 워크스페이스의 삭제 자격이 있는가?)
-    await this.wsMemberService.hasRequiredRolePermission(
+    const member = await this.wsMemberService.hasRequiredRolePermission(
       RolePermission.WORKSPACE_MANAGE_SETTINGS,
       userId,
       workspaceId,
     );
+
+    // 오너만 삭제 가능
+    if (member.role !== WorkspaceRole.OWNER) {
+      throw new BusinessException(
+        ErrorDomain.Workspace,
+        `Only owner can delete workspace`,
+        `Only owner can delete workspace`,
+        HttpStatus.FORBIDDEN,
+      );
+    }
 
     // 삭제
     this.workspaceRepo.deleteWorkspaceById(workspaceId);
