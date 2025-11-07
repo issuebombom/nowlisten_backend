@@ -1,3 +1,4 @@
+import { ApiProperty } from '@nestjs/swagger';
 import {
   BeforeInsert,
   CreateDateColumn,
@@ -9,12 +10,15 @@ import { ulid } from 'ulid';
 
 @Entity()
 export class BaseEntity {
+  @ApiProperty()
   @PrimaryColumn({ type: 'varchar', length: 26 })
   id: string;
 
+  @ApiProperty()
   @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
 
+  @ApiProperty()
   @UpdateDateColumn({ type: 'timestamptz' })
   updatedAt: Date;
 

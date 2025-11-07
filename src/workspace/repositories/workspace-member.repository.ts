@@ -6,8 +6,6 @@ import { Workspace } from '../entities/workspace.entity';
 import { WorkspaceRole } from 'src/common/types/workspace-role.type';
 import { User } from 'src/auth/entities/user.entity';
 import { MemberStatus } from 'src/common/types/member-status.type';
-import { keysToCamel } from 'src/common/utils/case.util';
-import { GetWorkspaceResDto } from '../dto/get-workspace-res.dto';
 
 @Injectable()
 export class WorkspaceMemberRepository {
@@ -33,22 +31,25 @@ export class WorkspaceMemberRepository {
     return this.repo.save(member);
   }
 
-  // ! NOTE: 이게 멤버 레포에 있어야 하나? (유저 id로 접근하니까 타당함?)
-  async findWorkspaceByUserId(userId: string): Promise<GetWorkspaceResDto[]> {
-    const rows = await this.repo.query(
-      `SELECT 
-          ws.*, wm.name AS member_name, wm.role AS member_role
-       FROM 
-          workspace_member AS wm
-       LEFT JOIN
-          workspace AS ws ON wm.workspace_id = ws.id
-       WHERE 
-          wm.user_id = $1
-       ORDER BY wm.joined_at DESC
-       `,
-      [userId],
-    );
-    return rows.map(keysToCamel);
+  async getMembersByWsId(
+    workspaceId: string,
+    limit: number,
+    isNext?: boolean,
+    lastMemberId?: string,
+  ): Promise<WorkspaceMember[]> {
+    const query = this.repo
+      .createQueryBuilder('member')
+      .select(['member', 'user.id', 'user.email'])
+      .where('member.workspace.id = :workspaceId', { workspaceId })
+      .leftJoin('member.user', 'user')
+      .orderBy('member.id', 'ASC')
+      .limit(limit + 1);
+
+    if (isNext && lastMemberId) {
+      query.andWhere('member.id > :lastMemberId', { lastMemberId });
+    }
+
+    return await query.getMany();
   }
 
   async findMemberById(memberId: string): Promise<WorkspaceMember> {
@@ -68,5 +69,26 @@ export class WorkspaceMemberRepository {
       user: { id: userId },
       workspace: { id: workspaceId },
     });
+  }
+
+  async findMemberByEmail(
+    workspaceId: string,
+    email: string,
+  ): Promise<WorkspaceMember> {
+    return await this.repo
+      .createQueryBuilder('member')
+      .select(['member', 'user.id', 'user.email'])
+      .leftJoin('member.user', 'user')
+      .where('member.workspace.id = :workspaceId', { workspaceId })
+      .andWhere('user.email = :email', { email })
+      .getOne();
+  }
+
+  updateMemberById(memberId: string, options: Partial<WorkspaceMember>) {
+    return this.repo.update(memberId, options);
+  }
+
+  deleteWorkspaceMember(memberId: string) {
+    return this.repo.delete(memberId);
   }
 }

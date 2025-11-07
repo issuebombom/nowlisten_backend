@@ -1,14 +1,17 @@
-import { WorkspaceRole } from 'src/common/types/workspace-role.type';
-import { WorkspaceStatus } from 'src/common/types/workspace-status.type';
+import { ApiProperty, PickType } from '@nestjs/swagger';
+import { WorkspaceMember } from '../entities/workspace-member.entity';
+import { Workspace } from '../entities/workspace.entity';
 
-export class GetWorkspaceResDto {
-  id: string;
-  name: string;
-  slug: string;
-  status: WorkspaceStatus;
-  profileImageUrl?: string;
-  createdAt: Date;
-  updatedAt: Date;
-  memberName: string;
-  memberRole: WorkspaceRole;
+class MemberDto extends PickType(WorkspaceMember, ['id', 'name', 'role']) {}
+export class GetWorkspaceResDto extends PickType(Workspace, [
+  'id',
+  'name',
+  'slug',
+  'status',
+  'profileImageUrl',
+  'createdAt',
+  'updatedAt',
+]) {
+  @ApiProperty()
+  member: MemberDto;
 }
