@@ -3,63 +3,34 @@
 ## 목차
 
 - [프로젝트 개요](#프로젝트-개요)
+- [데이터베이스](#데이터베이스)
 - [주요 기능](#주요-기능)
-- [기술 스택](#기술-스택)
-- [프로젝트 구조](#프로젝트-구조)
 - [실행 방법](#실행-방법)
 - [API 명세](#api-명세)
-- [고민한 점](#개발-과정에서-공부한-내용-정리)
+- [고민한 점](#주요-적용-로직-정리)
 
 ## 프로젝트 개요
 
-슬랙과 같은 업무 협업을 위한 서비스를 개인적으로 보유하고 싶어 시작한 프로젝트 입니다.  
-`nowlisten_backend`는 `nowlisten` 프로젝트의 백엔드 API 서버입니다.  
+슬랙과 같은 업무 협업을 위한 서비스를 개인적으로 운영하고 싶어 시작한 프로젝트 입니다.  
+우선적으로 워크스페이스 > 채널 > 메시지의 계층을 기반으로 유저가 메시지를 공유하는 기본적인 구현 완성을 목표로 하고 있습니다.  
 NestJS 프레임워크를 기반으로 구축되었으며, PostgreSQL 데이터베이스와 연동하여 동작합니다.
 
-<img width="2290" height="1072" alt="ERD" src="https://github.com/user-attachments/assets/9d89a479-9c12-4e94-91da-a23d4424a0ba" />
+## 데이터베이스
+<img width="2550" height="1352" alt="workspace" src="https://github.com/user-attachments/assets/32121ca1-dd6e-480e-8f05-d07fbb083d2f" />
 
 ## 주요 기능
 
-- **사용자 인증**: `auth` 모듈을 통해 JWT(Access/Refresh Token) 기반의 사용자 인증 기능을 제공합니다.
-  - 회원가입, 로그인, 로그아웃 기능을 구현했습니다.
-  - Access Token 만료 시 Refresh Token을 이용한 재발급 기능을 구현했습니다.
-- **API 문서화**: `swagger` 설정을 통해 API 문서를 자동화하고, Basic Auth로 접근을 제어합니다.
-- **데이터베이스**: `docker` 디렉토리의 `docker-compose-local.yaml` 파일을 통해 PostgreSQL 데이터베이스를 사용하며, TypeORM을 통해 데이터를 관리합니다.
-- **에러 핸들링**: `BusinessException`을 커스텀하여 에러 발생 시 추적을 용이하게 하고, 전역 `ExceptionFilter`를 통해 일관된 형식의 에러 응답을 제공합니다.
-- **로깅**: `winston`을 활용하여 `local`, `prod` 등 환경에 따라 다른 형식과 레벨로 로그를 기록합니다.
+(2025. 11. 08)
+
+- **사용자 인증**: `auth` 모듈을 통해 JWT(Access/Refresh Token) 기반의 사용자 인증 기능을 제공하며, 레프레시 토큰을 따로 관리하여 강제 로그아웃, 블랙리스트 등록에 활용합니다.
+- **에러 핸들링**: `BusinessException`으로 에러 발생 시 추적을 용이하게 하고, 전역 `ExceptionFilter`를 통해 일관된 형식의 에러 응답을 제공합니다.
 - **유효성 검사**: `class-validator`와 `ValidationPipe`를 이용해 전역 DTO 유효성을 검사하며, 커스텀 필터를 통해 명확한 에러 메시지를 반환합니다.
+- **이메일 전송**: `event-emitter` 기반 이메일 전송으로 가입, 초대, 비밀번호 변경 등에 활용하며 향후 실패 시 재전송 등 안정성 확보를 위한 queue 적용 고민 중입니다.
+- **권한 적용**: `role-permission.ts`에서 비트마스트(bitmask) 방식을 적용하여 역할(role)별 권한 부여 및 인가를 담당합니다.
+- **API 문서화**: `swagger` 설정을 통해 API 문서화하고, Basic Auth로 접근을 제어합니다.
+- **데이터베이스**: `docker` 디렉토리의 `docker-compose-local.yaml` 파일을 통해 PostgreSQL 데이터베이스를 사용하며, TypeORM을 통해 데이터를 관리합니다.
 - **CORS**: `main.ts` 파일의 `enableCors` 설정을 통해 Origin Whitelist 기반의 CORS 정책을 적용하여 허용된 출처의 요청만 처리합니다.
-
-## 기술 스택
-
-- **Framework**: NestJS
-- **Language**: TypeScript
-- **Database**: PostgreSQL
-- **ORM**: TypeORM
-- **Authentication**: Passport, JWT
-- **Logging**: Winston
-- **Validation**: class-validator, class-transformer
-
-## 프로젝트 구조
-
-```
-/nowlisten_backend
-├── .github/                  # GitHub Actions 워크플로우
-├── docker/                   # Docker 관련 설정 (Dockerfile, docker-compose.yaml)
-├── src/                      # 소스 코드
-│   ├── auth/                 # 인증 관련 모듈 (컨트롤러, 서비스, DTO, 엔티티 등)
-│   ├── common/               # 공통 모듈 및 유틸리티
-│   ├── exception/            # 예외 처리 필터
-│   ├── main.ts               # 애플리케이션 진입점
-│   └── app.module.ts         # 루트 모듈
-├── test/                     # 테스트 코드
-├── .gitignore                # Git 무시 파일 목록
-├── .prettierrc               # Prettier 설정
-├── package.json              # 프로젝트 정보 및 의존성 관리
-├── tsconfig.build.json       # TypeScript 빌드 설정
-├── tsconfig.json             # TypeScript 설정
-└── yarn.lock                 # Yarn 의존성 잠금 파일
-```
+- **로깅**: `winston`을 활용하여 `local`, `prod` 등 환경에 따라 다른 형식과 레벨로 로그를 기록하며, 쿼리 로깅도 커스텀 적용하고 있습니다.
 
 ## 실행 방법
 
@@ -100,79 +71,101 @@ NestJS 프레임워크를 기반으로 구축되었으며, PostgreSQL 데이터�
 
 ## API 명세
 
-애플리케이션 실행 후, `http://localhost:3001/api-docs`에서 API 문서를 확인할 수 있습니다.
+애플리케이션 실행 후, `http://localhost:3001/api-docs`에서 API 문서를 확인할 수 있으며 admin으로 접속합니다. (`.env.local`에서 Basic Auth 설정)
 
-## 개발 과정에서 공부한 내용 정리
-
-### CORS 설정
-
-CORS(Cross-Origin Resource Sharing)는 웹 브라우저에서 다른 출처(origin)의 리소스를 요청할 수 있도록 허용하는 보안 정책입니다. 기본적으로 브라우저는 보안상의 이유로 다른 출처의 요청을 차단하므로, 프론트엔드 개발을 위해 CORS 설정을 추가했습니다.
-
-- `origin` 옵션을 통해 허용할 출처를 관리합니다.
-- `methods` 옵션을 통해 허용할 HTTP 메서드를 지정합니다.
-- `requestOrigin`이 없는 경우(e.g., Postman)와 `originWhiteList`에 포함된 경우, 로컬 환경(`http://127.0.0.1`, `http://localhost`)에서의 요청을 허용합니다.
-
-### 로깅
-
-`winston`을 사용하여 환경별로 다른 로깅 정책을 적용했습니다.
-
-- **개발 환경 (`local`, `test`)**: `colorize`, `prettyPrint` 옵션을 사용하여 가독성을 높이고, `silly` 레벨로 모든 로그를 기록합니다.
-- **프로덕션 환경 (`prod`)**: `info` 레벨 이상의 로그만 기록하며, 시각적 꾸밈 요소는 제외합니다.
+## 주요 적용 로직 정리
 
 ### 예외 처리
 
-NestJS의 기본 `HttpException`을 확장한 `BusinessException`을 정의하여 에러 추적을 용이하게 했습니다.
+고민포인트: 일관된 양식의 예외 응답 발행 | 개발자 디버깅용과 유저 제공용 메시지 분리
 
-- **`BusinessException`**: `id`, `domain`, `message`, `timestamp` 등의 필드를 추가하여 에러 발생 시점과 원인을 명확히 파악할 수 있도록 했습니다.
-- **`ExceptionFilter`**: `BusinessException` 외에 `HttpException`, `Error` 등 다양한 타입의 에러를 일관된 형식으로 처리합니다.
+- NestJS의 기본 `HttpException`을 확장한 `BusinessException`을 정의하여 에러 추적을 용이하게 했습니다.
 
-### DTO 최적화
-
-`class-transformer`의 `OmitType`, `IntersectionType`을 활용하여 DTO 코드의 재사용성을 높였습니다.
-
-- **`OmitType`**: 특정 필드를 제외한 DTO를 생성합니다. (e.g., `password`를 제외한 사용자 정보 DTO)
-- **`IntersectionType`**: 여러 DTO를 조합하여 새로운 DTO를 생성합니다.
-- _(미적용: 가독성이 떨어짐)_
+- **`BusinessException`**: `id`, `domain`, `message`, `timestamp`, `context` 등의 필드를 추가하여 에러 발생 시점과 원인을 명확히 파악할 수 있도록 했습니다.
+- **`ExceptionFilter`**: `BusinessException` 외에 `HttpException`, `Error` 설정으로 BusinessException 이 외의 예외 발생 시 외부적으로는 500을 발행하고 내부적으로는 trace할 수 있도록 설정했습니다.
+- **`CustomQueryLogger`**: 쿼리 실행 결과, 느린 쿼리 및 오류 파악을 위한 로깅을 구성했습니다.
 
 ### 유효성 검사
 
+고민 포인트: 예약어를 관리하여 유저의 특정 필드 수정 시 단어 제한 로직 추가
+
 - `class-validator`와 `ValidationPipe`를 사용하여 DTO의 유효성을 검사하고, 커스텀 필터를 적용하여 기본 BadRequestException이 아닌 BusinessException 형태로 출력하여 예외 응답 바디의 일관성을 유지합니다.
 
-- `ValidationPipe`를 전역으로 설정하여 class-validator 데코레이터가 달린 모든 dto 대한 유효성 검사를 수행합니다.
+- `validationExceptionFilter`로 `BusinessException`을 적용하여 유효성 검사 실패에 대한 응답 명세가 비즈니스 예외와 일관적일 수 있도록 커스텀했습니다.
 
-### Timestamp 저장
+- `IsNotReservedWord` 커스텀 데코레이터를 추가하여 향후 서브도메인으로 활용할 예정인 slug 필드 변경 시 'www', 'api', 'auth' 등을 예약어로 지정하여 선점할 수 없도록 했습니다.
 
-데이터베이스에 시간을 저장할 때 발생할 수 있는 타임존 문제를 방지하기 위해 `timestamptz` 타입을 사용합니다.
+### Timestamp 설정 관련
 
-- `timestamp` 타입은 타임존 정보 없이 시간만 저장하므로, 서버의 타임존에 따라 시간이 다르게 해석될 수 있습니다.
-- `timestamptz` 타입은 타임존 정보를 함께 저장하여 UTC 기준으로 시간을 일관되게 관리합니다.
+고민포인트: 데이터베이스에 시간을 저장할 때 타임존 이슈로 만료 체크와 관련된 로직이 정상작동하지 않는 현상 발견
+
+- 필드 타입을 timestamp에서 `timestamptz` 타입으로 변경했습니다.
+
+- `timestamp` 타입은 타임존 정보 없이 시간만 저장하므로, 서버의 타임존에 따라 시간이 다르게 해석될 수 있습니다. 즉 DB에서 획득한 timestamp가 서버의 물리적 위치 또는 시스템에 설정된 타임존을 기준으로 재해석되는 현상이 발생합니다.
+- `timestamptz` 타입은 타임존 정보를 함께 저장하여 UTC 기준으로 시간을 일관되게 관리하므로 어느 지역에서든 시간 경과 혹은 기간에 대한 연산 시 오류를 방지합니다.
 
 ### 인증 아키텍처
 
-Next.js와 같은 프론트엔드 프레임워크와의 연동을 고려하여, 백엔드는 JWT 발급 및 검증에 집중하고, 프론트엔드(Next.js 서버)가 세션 쿠키를 관리하는 방식으로 역할을 분리했습니다.
+고민포인트: 프론트와 백엔드의 담당 범위 어디까지?
+
+- Next.js와 같은 프론트엔드 프레임워크와의 연동을 고려하여, 백엔드는 JWT 발급 및 검증에 집중하고, 프론트엔드(Next.js 서버)가 세션 쿠키를 관리하는 방식으로 역할을 분리했습니다.
 
 - **백엔드**: JWT(Access/Refresh Token)를 발급하고, 유효성을 검증합니다.
 - **프론트엔드**: 발급받은 토큰을 쿠키에 저장하고, 요청 시 헤더에 담아 전송합니다. Access Token 만료 시 Refresh Token을 사용하여 재발급을 요청합니다.
-
-### Jwt Guard 설정
-
-- 유저 자격에 따른 접근 권한을 확인할 떄 프론트에서 access 토큰을 Authorization으로 받는다.
-- 이를 Guard로 설정하여 토큰 인증과 그에 따른 예외 처리를 한다.
-- 예외 처리는 일관성 유지를 위해 BusinessException 형태가 적용되도록 한다.
+- **소셜 로그인**: 동일 이메일로 일반, 소셜 회원으로 중복가입하는 것을 막아뒀으며 최초 소셜 로그인 시 자동 회원가입되도록 처리, 패스워드를 발행하지 않으나 소셜 로그인 유저의 회원 탈퇴 시 비밀번호 재설정이 필요하도록 요구합니다.
 
 ### Refresh 토큰 관리
 
-- next.js서버에서 세션 쿠키(refresh)를 생성했다고 가정했을 때 로그 아웃 시 자체적으로 세션 쿠키 제거가 가능함
-- 하지만 내부적으로 refresh를 DB에 보관함으로써 토큰 탈취 시 해당 유저의 토큰을 삭제함으로써 대응 가능하도록 한다.
-- 또한 정기적으로 DB에서 expired된 jti에 대한 삭제 cron을 설정한다. (토큰 검증 과정에서 expired 토큰은 예외처리 되므로 실시간 삭제 불필요)
+고민포인트: 모든 디바이스 로그아웃 처리 | Refresh 탈취 시 조치(블랙리스트 관리)를 어떻게 할 것인가?
 
-### 소셜 로그인 시 access, refresh 토큰 프론트 전달 방법
+- JWT로 세션 쿠키(access)를 생성하여 로그 아웃 시 자체적으로 세션 쿠키 제거를 제거하게 하여 stateless하도록 의도하였습니다.
+- 하지만 refresh는 DB로 관리하여 토큰 탈취에 대응 가능하도록 하여 stateful합니다. 그래서 access의 유효기간을 매우 짧게 둘 경우 JWT의 stateless의 장점이 희석되므로 유효 기간이 trade-off 대상입니다.
+- refresh를 DB로 관리하므로 모든 디바이스 강제 로그아웃 조치가 가능합니다. 그러나 access가 만료된 경우에만 refresh를 조회하므로 access 유효기간이 만료될 때까지는 로그인을 유지하게 됩니다. 이를 해결하기 위해서는 인메모리나 Redis에 refresh JTI를 블랙리스트로 등록하고, 매 인가 때마다 확인시키는 방법이 있으나 대부분 miss일 것에 반해 트래픽이 높을 것으로 예상되어 비효율적으로 보입니다.
+- 현재 정기적으로 DB에서 expired된 jti에 대한 삭제 cron이 설정되어 있으나 멀티 인스턴스 상황에 대한 대처가 필요하고, 장기적으로는 TTL 설정이 가능한 Memory 사용을 고려해야 합니다.
 
-소셜 로그인 인증 후 callback에서 프론트로 리다이렉트할 때 jwt 전달하지 않고(보안 취약성) 세션id와 같은 임시토큰을 전달하여 이를 기반으로 nextjs 서버에서 jwt를 백엔드에 따로 요청하도록 한다.
+### 소셜 로그인 시 access, refresh 토큰 프론트 전달
 
-- callback에서 소셜 유저 정보를 기반으로 access, refresh를 생성한다.
-- 세션id(임시토큰) 생성 후 메모리에 { access, refresh }를 key: value로 연결해 둔다. (redis, in-memory)
-- nextjs 서버로 세션id를 query에 담아 GET 요청(리다이렉트)한다.
-- 프론트는 받은 세션id를 body에 담아 jwt 획득을 위한 POST 요청을 서버로 보낸다.
-- 서버는 메모리 get으로 임시 토큰 검증(획득) 후 access, refresh를 응답한다.
+고민포인트: 소셜 로그인 시 리다이렉트로 JWT 전달(쿼리스트링) 방식은 취약함
+
+소셜 로그인 인증 후 callback에서 임시토큰을 전달한 뒤 이를 기반으로 Next.js 서버와 백엔드 간 POST 요청으로 JWT 전달하도록 하였습니다.
+
+- callback에서 임시토큰 생성 후 소셜 유저 정보를 기반으로 임시토큰: userId 형태로 메모리에 저장한다. (redis/in-memory, TTL 10초 정도)
+- Next.js로 임시토큰을 스트링쿼리에 담아 GET 요청(리다이렉트)한다.
+- 프론트는 받은 임시토큰를 body에 담아 JWT 획득을 위해 백엔드로 POST 요청을 보낸다.
+- 서버는 메모리에서 임시 토큰으로 userId를 획득, 검증 후 access, refresh를 생성, 전달하고 메모리에서 삭제한다.
 - 프론트는 받은 jwt를 토대로 유저 세션 쿠키를 등록한다.
+
+### 이메일 전송 관린 설정
+
+고민포인트: 이메일 전송을 비동기로 하는 방식에 대한 고민
+
+- SES 이메일 전송은 fulfilled를 기다리지 않도록 해서 응답 속도에 영향을 주지 않도록 하였으며 향후 이메일 전송과 같은 부수효과를 따로 관리하기 위해 이벤트 발행(eventEmitter2) 방식을 추가했습니다.
+
+- 이메일 전송은 가비아에서 도메인 구매 후 Amazon SES를 nodemailer 모듈로 등록하여 설정했습니다.
+- `mail.service.ts`에서 테마별 메일 전송 api를 관리하며 각 페이지는 html 양식에서 지정란에 value를 변경해서 제공하는 방식을 취합니다.
+- 현재는 단순 html 문서를 적용하나 향후 양식의 일관성과 유지보수를 위해 공용 헤더나 푸터가 사용되도록 템플릿 엔진을 적용할 필요가 있습니다.
+
+### 워크스페이스 멤버의 역할(Role) 설정
+
+고민포인트: DB에는 가독성을 위해 역할명을 그대로 유지하면서 역할별 등급을 매기고 싶었음
+
+- 우선적으로 역할을 ['owner', 'manager', 'member', 'guest'] 4개로 분리하여 `role-level.ts`를 통해 등급을 number로 설정했습니다. 그래서 가령 하위 등급이 상위 등급에 대한 역할 변경, 권한 변경에 제한을 두도록 로직을 구성했습니다.
+- 역할의 명칭은 변동 가능성이 있으므로 등급의 number를 10 단위로 설정하여 중간서열 추가에 유연하도록 했습니다.
+
+### 워크스페이스 권한(Permission) 설정
+
+고민포인트: 가령 타 멤버 탈퇴 처리 시 해당 로직 수행자의 Role이 manager 이상인지만 체크하는 방식이 아니라 각 Role별 세부 권한이 부여되는 방식을 구현하고 싶었음 (AWS의 IAM처럼)
+
+- `role-permission.ts`을 통해 역할에 따른 권한을 추가 또는 제거할 수 있도록 구성했습니다.
+- 각 권한은 **비트마스크** 방식을 채택하여 각 권한이 터미널의 `chmod`와 같이 동작하도록 했습니다. (number는 32bit로 권한 역시 최대 32개까지만 적용 가능)
+- 현재 [워크스페이스, 채널, 메시지, 유료컨텐츠] 4단계 카테고리를 기준으로 세부 권한을 분류해두었으며 AND, OR 연산을 통해 인가 및 권한 추가를 수행합니다.
+- 권한 추가 및 부여 시 서버를 내려야 하는 문제가 있어 이를 env와 같은 형태로 분리할 수 있는 방안 고민이 필요함
+
+### 워크스페이스 초대 로직
+
+고민포인트: 초대를 할 떄 상태를 확인하거나 초대를 취소할 수 있도록 기능 구현 | 동일 대상에게 여러번 초대할 경우 생성한 임시토큰이 재사용될 수 있게 하려면
+
+- 초대 시 `WorkspaceInvitation` 테이블의 데이터를 초대장의 개념으로 생성합니다.
+- 최초 초대 시 status는 invited가 되고, 승인, 거절 등의 status를 관리하여 초대의 진행도 또는 취소 등을 파악합니다.
+- 초대 이메일에 임시 토큰 기반 링크를 함께 발송하여 참여 링크에 접속하도록 유도하며, 유효기간을 설정합니다.
+- 초대 권한이 있는 멤버만 초대가 가능하며, 동일 이메일을 대상으로 재초대할 경우 기존 레코드를 재활용합니다.
