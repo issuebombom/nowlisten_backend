@@ -5,6 +5,7 @@ import { Column, Entity, Index, ManyToOne, OneToMany, Relation } from 'typeorm';
 import { Workspace } from './workspace.entity';
 import { MemberStatus } from 'src/common/types/member-status.type';
 import { WorkspaceInvitation } from './workspace-invitation.entity';
+import { ChannelMember } from 'src/channel/entities/channel-member.entity';
 
 @Entity()
 @Index(['workspace'])
@@ -26,6 +27,9 @@ export class WorkspaceMember extends BaseEntity {
 
   @OneToMany(() => WorkspaceInvitation, (invitation) => invitation.member)
   invitation: Relation<WorkspaceInvitation>;
+
+  @OneToMany(() => ChannelMember, (channel) => channel.workspaceMember)
+  channel: Relation<ChannelMember>;
 
   @ManyToOne(() => User, { onDelete: 'CASCADE' })
   user: Relation<User>;

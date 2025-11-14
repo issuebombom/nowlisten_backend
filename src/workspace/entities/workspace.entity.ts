@@ -3,6 +3,7 @@ import { Column, Entity, OneToMany, Relation } from 'typeorm';
 import { WorkspaceMember } from './workspace-member.entity';
 import { WorkspaceInvitation } from './workspace-invitation.entity';
 import { WorkspaceStatus } from 'src/common/types/workspace-status.type';
+import { Channel } from 'src/channel/entities/channel.entity';
 
 @Entity()
 export class Workspace extends BaseEntity {
@@ -27,4 +28,7 @@ export class Workspace extends BaseEntity {
 
   @OneToMany(() => WorkspaceInvitation, (invitation) => invitation.workspace)
   workspaceInvitation: Relation<WorkspaceInvitation>;
+
+  @OneToMany(() => Channel, (channel) => channel.workspace)
+  channel: Relation<Channel>;
 }

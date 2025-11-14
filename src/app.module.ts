@@ -10,6 +10,7 @@ import { WorkspaceModule } from './workspace/workspace.module';
 import { MailModule } from './mail/mail.module';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { CustomQueryLogger } from './app.options';
+import { ChannelModule } from './channel/channel.module';
 
 @Module({
   imports: [
@@ -50,6 +51,7 @@ import { CustomQueryLogger } from './app.options';
 
     AuthModule,
     WorkspaceModule,
+    ChannelModule,
     MailModule,
   ],
   controllers: [],

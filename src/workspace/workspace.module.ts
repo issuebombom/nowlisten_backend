@@ -32,6 +32,6 @@ import { MailModule } from 'src/mail/mail.module';
 
     WorkspaceListener,
   ],
-  exports: [],
+  exports: [WorkspaceService, WorkspaceMemberService],
 })
 export class WorkspaceModule {}
